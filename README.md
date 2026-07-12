@@ -292,11 +292,11 @@ AI-DAW/
 
 - ピアノロール編集は未実装
 - AudioClip編集はSplit、左右端トリム、複製、削除、1秒フェード、Clip Gainなどに対応
-- MidiClip編集は移動、右端トリム、複製、削除、グリッドクオンタイズ、オクターブ移調、Velocity調整のみ対応
+- MidiClip編集は移動、右端トリム、Split、複製、削除、グリッドクオンタイズ、移調、Velocity調整、Humanize、Legato / Staccatoに対応
 - Audioタイムストレッチは未実装
 - VST / AUプラグインには未対応
-- MIDI CC編集、クオンタイズは未実装
-- AI Chordsはローカルの簡易コード進行生成で、外部AI APIは未接続
+- MIDI CC編集は未実装
+- AI Chords / AI Bassはローカルの簡易MIDI生成で、外部AI APIは未接続
 - Audioファイルは現在メモリへ読み込むため、長時間ファイルには不向き
 - マイク録音とMIDI録音は基礎実装で、同時録音や詳細編集は今後の対象
 
