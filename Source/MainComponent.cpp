@@ -12,11 +12,11 @@ MainComponent::MainComponent()
 {
     audioEngine.setMidiKeyboardState(&keyboardState);
 
-    titleLabel.setText("AI-DAW", juce::dontSendNotification);
     titleLabel.setJustificationType(juce::Justification::centredLeft);
     titleLabel.setFont(juce::Font(juce::FontOptions(26.0f, juce::Font::bold)));
     titleLabel.setColour(juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible(titleLabel);
+    updateTitleDisplay();
 
     positionLabel.setText("00:00 / 00:00   Bar 1 Beat 1", juce::dontSendNotification);
     positionLabel.setColour(juce::Label::textColourId, juce::Colours::white);
@@ -1189,6 +1189,18 @@ void MainComponent::selectFirstTrackIfNeeded()
         trackSelector.setSelectedItemIndex(0, juce::dontSendNotification);
 }
 
+void MainComponent::updateTitleDisplay()
+{
+    auto title = juce::String("AI-DAW");
+
+    if (currentProjectFile != juce::File{})
+        title += " - " + currentProjectFile.getFileNameWithoutExtension();
+    else
+        title += " - Untitled";
+
+    titleLabel.setText(title, juce::dontSendNotification);
+}
+
 void MainComponent::updateSelectedTrackControls()
 {
     const auto selected = getSelectedTrack();
@@ -1302,6 +1314,7 @@ void MainComponent::newProject()
         auto* component = safeThis.getComponent();
         component->audioEngine.newProject();
         component->currentProjectFile = juce::File();
+        component->updateTitleDisplay();
         component->loopButton.setToggleState(false, juce::dontSendNotification);
         component->timelineComponent.clearLoopRange();
         component->refreshTrackSelector();
@@ -2791,9 +2804,14 @@ void MainComponent::saveProject()
     if (currentProjectFile != juce::File{})
     {
         if (audioEngine.saveProject(currentProjectFile))
+        {
+            updateTitleDisplay();
             showInfoMessage("Project saved", "The project file was saved.");
+        }
         else
+        {
             showErrorMessage("Project save failed", "The project could not be saved.");
+        }
 
         return;
     }
@@ -2832,6 +2850,7 @@ void MainComponent::saveProjectAs()
         if (component->audioEngine.saveProject(file))
         {
             component->currentProjectFile = file;
+            component->updateTitleDisplay();
             component->showInfoMessage("Project saved", "The project file was saved.");
         }
         else
@@ -2863,6 +2882,7 @@ void MainComponent::openProject()
         if (component->audioEngine.loadProject(file))
         {
             component->currentProjectFile = file;
+            component->updateTitleDisplay();
             component->loopButton.setToggleState(false, juce::dontSendNotification);
             component->timelineComponent.clearLoopRange();
             component->refreshTrackSelector();

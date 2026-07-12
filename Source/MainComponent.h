@@ -35,6 +35,7 @@ private:
     void refreshMidiDevices();
     void refreshTrackSelector();
     void selectFirstTrackIfNeeded();
+    void updateTitleDisplay();
     void updateSelectedTrackControls();
     void updateTransportDisplay();
     void updateButtonStates();
