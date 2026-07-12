@@ -118,6 +118,10 @@ public:
     bool deleteMidiClip(const TrackId& trackId, const juce::Uuid& clipId);
     bool splitMidiClipAtBeat(const TrackId& trackId, const juce::Uuid& clipId, double splitBeat);
     bool quantizeMidiClip(const TrackId& trackId, const juce::Uuid& clipId, double gridBeats);
+    bool swingQuantizeMidiClip(const TrackId& trackId,
+                               const juce::Uuid& clipId,
+                               double gridBeats,
+                               double swingAmount);
     bool transposeMidiClip(const TrackId& trackId, const juce::Uuid& clipId, int semitones);
     bool adjustMidiClipVelocity(const TrackId& trackId, const juce::Uuid& clipId, float delta);
     bool humanizeMidiClipVelocity(const TrackId& trackId, const juce::Uuid& clipId, float amount);

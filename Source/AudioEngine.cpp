@@ -1153,6 +1153,57 @@ bool AudioEngine::quantizeMidiClip(const TrackId& trackId, const juce::Uuid& cli
     return false;
 }
 
+bool AudioEngine::swingQuantizeMidiClip(const TrackId& trackId,
+                                        const juce::Uuid& clipId,
+                                        double gridBeats,
+                                        double swingAmount)
+{
+    if (! std::isfinite(gridBeats) || gridBeats <= 0.0 || ! std::isfinite(swingAmount))
+        return false;
+
+    const auto safeSwing = juce::jlimit(0.0, 0.75, swingAmount);
+    const auto pairLength = gridBeats * 2.0;
+
+    std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
+
+    if (auto* track = projectModel.findMidiTrack(trackId))
+        for (auto& clip : track->clips)
+            if (clip.id == clipId)
+            {
+                clip.sequence.updateMatchedPairs();
+
+                for (auto i = 0; i < clip.sequence.getNumEvents(); ++i)
+                {
+                    auto* event = clip.sequence.getEventPointer(i);
+
+                    if (event == nullptr)
+                        continue;
+
+                    auto message = event->message;
+                    auto timeStamp = message.getTimeStamp();
+
+                    if (! std::isfinite(timeStamp))
+                        timeStamp = 0.0;
+
+                    const auto pairIndex = std::floor(timeStamp / pairLength);
+                    const auto pairStart = pairIndex * pairLength;
+                    const auto local = timeStamp - pairStart;
+                    const auto target = local < gridBeats * 0.5
+                        ? pairStart
+                        : pairStart + gridBeats + gridBeats * safeSwing;
+                    message.setTimeStamp(juce::jlimit(0.0, clip.lengthBeats, target));
+                    event->message = message;
+                }
+
+                clip.sequence.sort();
+                clip.sequence.updateMatchedPairs();
+                return true;
+            }
+
+    return false;
+}
+
 bool AudioEngine::transposeMidiClip(const TrackId& trackId, const juce::Uuid& clipId, int semitones)
 {
     if (semitones == 0)
