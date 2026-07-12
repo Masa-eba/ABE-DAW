@@ -71,6 +71,7 @@ private:
     void movePlayheadToSelectedClipBoundary(bool endBoundary);
     void moveSelectedClipToPlayhead();
     void selectAdjacentClip(int direction);
+    void selectClipAtPlayhead();
     void adjustSelectedAudioClipGain(float delta);
     void resetSelectedAudioClipGain();
     void normalizeSelectedAudioClip();

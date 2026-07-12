@@ -185,6 +185,98 @@ bool TimelineComponent::selectAdjacentClip(int direction)
     return true;
 }
 
+bool TimelineComponent::selectClipAtTime(double seconds, std::optional<TrackId> preferredTrackId)
+{
+    if (projectModel == nullptr || ! std::isfinite(seconds) || seconds < 0.0)
+        return false;
+
+    struct ClipCandidate
+    {
+        TrackId trackId;
+        juce::Uuid clipId;
+        int trackOrder = 0;
+        double startSeconds = 0.0;
+        bool midi = false;
+        bool preferred = false;
+    };
+
+    std::vector<ClipCandidate> candidates;
+    auto trackOrder = 0;
+
+    for (const auto& track : projectModel->getAudioTracks())
+    {
+        for (const auto& clip : track->clips)
+        {
+            const auto endSeconds = clip.startTimeSeconds + clip.lengthSeconds;
+
+            if (seconds >= clip.startTimeSeconds && seconds < endSeconds)
+            {
+                candidates.push_back({ track->state.id,
+                                       clip.id,
+                                       trackOrder,
+                                       clip.startTimeSeconds,
+                                       false,
+                                       preferredTrackId.has_value() && *preferredTrackId == track->state.id });
+            }
+        }
+
+        ++trackOrder;
+    }
+
+    for (const auto& track : projectModel->getMidiTracks())
+    {
+        for (const auto& clip : track->clips)
+        {
+            const auto startSeconds = projectModel->getTempoMap().beatsToSeconds(clip.startBeat);
+            const auto endSeconds = projectModel->getTempoMap().beatsToSeconds(clip.startBeat + clip.lengthBeats);
+
+            if (seconds >= startSeconds && seconds < endSeconds)
+            {
+                candidates.push_back({ track->state.id,
+                                       clip.id,
+                                       trackOrder,
+                                       startSeconds,
+                                       true,
+                                       preferredTrackId.has_value() && *preferredTrackId == track->state.id });
+            }
+        }
+
+        ++trackOrder;
+    }
+
+    if (candidates.empty())
+        return false;
+
+    std::sort(candidates.begin(),
+              candidates.end(),
+              [] (const ClipCandidate& left, const ClipCandidate& right)
+              {
+                  if (left.preferred != right.preferred)
+                      return left.preferred;
+
+                  if (std::abs(left.startSeconds - right.startSeconds) > 0.000001)
+                      return left.startSeconds > right.startSeconds;
+
+                  return left.trackOrder < right.trackOrder;
+              });
+
+    const auto& selected = candidates.front();
+
+    if (selected.midi)
+    {
+        selectedMidiClip = std::make_pair(selected.trackId, selected.clipId);
+        selectedAudioClip.reset();
+    }
+    else
+    {
+        selectedAudioClip = std::make_pair(selected.trackId, selected.clipId);
+        selectedMidiClip.reset();
+    }
+
+    repaint();
+    return true;
+}
+
 void TimelineComponent::paint(juce::Graphics& graphics)
 {
     graphics.fillAll(juce::Colour(0xff252629));

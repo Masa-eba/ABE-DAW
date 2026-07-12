@@ -935,6 +935,12 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    if (key.getModifiers().isAltDown() && key.getKeyCode() == 'c')
+    {
+        selectClipAtPlayhead();
+        return true;
+    }
+
     if (key.getModifiers().isAltDown() && key.getKeyCode() == ']')
     {
         cycleSnapGrid(1);
@@ -1886,6 +1892,22 @@ void MainComponent::moveSelectedClipToPlayhead()
 void MainComponent::selectAdjacentClip(int direction)
 {
     if (! timelineComponent.selectAdjacentClip(direction))
+        return;
+
+    if (const auto selectedAudioClip = timelineComponent.getSelectedAudioClip())
+        selectTrackById(selectedAudioClip->first);
+
+    if (const auto selectedMidiClip = timelineComponent.getSelectedMidiClip())
+        selectTrackById(selectedMidiClip->first);
+
+    timelineComponent.repaint();
+}
+
+void MainComponent::selectClipAtPlayhead()
+{
+    const auto selected = getSelectedTrack();
+
+    if (! timelineComponent.selectClipAtTime(audioEngine.getPosition(), selected.id))
         return;
 
     if (const auto selectedAudioClip = timelineComponent.getSelectedAudioClip())
