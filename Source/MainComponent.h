@@ -6,6 +6,9 @@
 
 #include <JuceHeader.h>
 
+#include <map>
+#include <set>
+
 class MainComponent final : public juce::Component,
                             private juce::Timer
 {
@@ -18,6 +21,8 @@ public:
 
     // Lays out transport, track controls, timeline, and keyboard.
     void resized() override;
+    bool keyPressed(const juce::KeyPress& key) override;
+    bool keyStateChanged(bool isKeyDown) override;
 
 private:
     struct TrackSelection
@@ -34,12 +39,16 @@ private:
     void updateTransportDisplay();
     void updateButtonStates();
     void importAudioToSelectedTrack();
+    void duplicateSelectedClip();
+    void deleteSelectedClip();
+    void generateAiChordsForSelectedTrack();
     void exportMix();
     void saveProject();
     void openProject();
     void showErrorMessage(const juce::String& title, const juce::String& message);
     void showInfoMessage(const juce::String& title, const juce::String& message);
     TrackSelection getSelectedTrack() const;
+    std::optional<int> getComputerKeyboardNoteForKey(int keyCode) const;
 
     AudioEngine audioEngine;
     juce::AudioDeviceManager audioDeviceManager;
@@ -63,9 +72,14 @@ private:
     juce::TextButton addMidiTrackButton;
     juce::TextButton deleteTrackButton;
     juce::TextButton importAudioButton;
+    juce::TextButton duplicateClipButton;
+    juce::TextButton deleteClipButton;
+    juce::TextButton snapButton;
+    juce::TextButton aiChordsButton;
     juce::TextButton playPauseButton;
     juce::TextButton stopButton;
     juce::TextButton recordButton;
+    juce::TextButton loopButton;
     juce::TextButton metronomeButton;
     juce::TextButton armButton;
     juce::TextButton muteButton;
@@ -77,6 +91,7 @@ private:
     juce::ComboBox midiInputSelector;
     std::unique_ptr<juce::FileChooser> fileChooser;
     juce::Array<juce::MidiDeviceInfo> midiDevices;
+    std::set<int> activeComputerKeyboardNotes;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };

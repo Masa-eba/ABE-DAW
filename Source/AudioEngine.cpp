@@ -1,5 +1,7 @@
 #include "AudioEngine.h"
 
+#include <array>
+#include <algorithm>
 #include <cmath>
 #include <memory>
 
@@ -208,6 +210,16 @@ bool AudioEngine::isMetronomeEnabled() const
     return metronome.isEnabled();
 }
 
+void AudioEngine::setLoopEnabled(bool enabled)
+{
+    loopEnabled.store(enabled);
+}
+
+bool AudioEngine::isLoopEnabled() const
+{
+    return loopEnabled.load();
+}
+
 bool AudioEngine::isPlaying() const
 {
     const auto state = transportState.load();
@@ -285,19 +297,27 @@ void AudioEngine::setTrackArmed(const TrackId& trackId, bool armed)
         midiTrack->state.armed = armed;
 }
 
-void AudioEngine::setAudioClipStartTime(const TrackId& trackId, double startTimeSeconds)
+void AudioEngine::setAudioClipStartTime(const TrackId& trackId,
+                                        const juce::Uuid& clipId,
+                                        double startTimeSeconds)
 {
     if (! std::isfinite(startTimeSeconds) || startTimeSeconds < 0.0)
         startTimeSeconds = 0.0;
 
     std::scoped_lock lock(modelMutex);
 
-    if (auto* track = projectModel.findAudioTrack(trackId); track != nullptr && ! track->clips.empty())
-        track->clips.front().startTimeSeconds = startTimeSeconds;
+    if (auto* track = projectModel.findAudioTrack(trackId))
+        for (auto& clip : track->clips)
+            if (clip.id == clipId)
+            {
+                clip.startTimeSeconds = startTimeSeconds;
+                return;
+            }
 }
 
 void AudioEngine::moveAudioClipToTrack(const TrackId& sourceTrackId,
                                        const TrackId& destinationTrackId,
+                                       const juce::Uuid& clipId,
                                        double startTimeSeconds)
 {
     if (! std::isfinite(startTimeSeconds) || startTimeSeconds < 0.0)
@@ -311,24 +331,91 @@ void AudioEngine::moveAudioClipToTrack(const TrackId& sourceTrackId,
     if (sourceTrack == nullptr || destinationTrack == nullptr || ! sourceTrack->hasAudio())
         return;
 
+    auto clipIterator = std::find_if(sourceTrack->clips.begin(), sourceTrack->clips.end(),
+                                     [&clipId](const AudioClip& clip)
+                                     {
+                                         return clip.id == clipId;
+                                     });
+
+    if (clipIterator == sourceTrack->clips.end())
+        return;
+
     if (sourceTrack == destinationTrack)
     {
-        if (! sourceTrack->clips.empty())
-            sourceTrack->clips.front().startTimeSeconds = startTimeSeconds;
-
+        clipIterator->startTimeSeconds = startTimeSeconds;
         return;
     }
 
-    destinationTrack->audioBuffer = std::move(sourceTrack->audioBuffer);
+    destinationTrack->audioBuffer = sourceTrack->audioBuffer;
     destinationTrack->sampleRate = sourceTrack->sampleRate;
-    destinationTrack->clips = std::move(sourceTrack->clips);
+    auto movedClip = *clipIterator;
+    movedClip.startTimeSeconds = startTimeSeconds;
+    destinationTrack->clips.push_back(movedClip);
+    sourceTrack->clips.erase(clipIterator);
 
-    if (! destinationTrack->clips.empty())
-        destinationTrack->clips.front().startTimeSeconds = startTimeSeconds;
+    if (sourceTrack->clips.empty())
+    {
+        sourceTrack->audioBuffer.setSize(0, 0);
+        sourceTrack->sampleRate = 0.0;
+    }
+}
 
-    sourceTrack->audioBuffer.setSize(0, 0);
-    sourceTrack->sampleRate = 0.0;
-    sourceTrack->clips.clear();
+bool AudioEngine::duplicateAudioClip(const TrackId& trackId, const juce::Uuid& clipId)
+{
+    std::scoped_lock lock(modelMutex);
+
+    if (auto* track = projectModel.findAudioTrack(trackId))
+        for (const auto& clip : track->clips)
+            if (clip.id == clipId)
+            {
+                auto duplicate = clip;
+                duplicate.id = juce::Uuid();
+                duplicate.startTimeSeconds += juce::jmax(1.0, clip.lengthSeconds * 0.25);
+                track->clips.push_back(duplicate);
+                return true;
+            }
+
+    return false;
+}
+
+bool AudioEngine::deleteAudioClip(const TrackId& trackId, const juce::Uuid& clipId)
+{
+    std::scoped_lock lock(modelMutex);
+
+    if (auto* track = projectModel.findAudioTrack(trackId))
+    {
+        const auto oldSize = track->clips.size();
+        track->clips.erase(std::remove_if(track->clips.begin(),
+                                          track->clips.end(),
+                                          [&clipId](const AudioClip& clip)
+                                          {
+                                              return clip.id == clipId;
+                                          }),
+                           track->clips.end());
+
+        if (track->clips.empty())
+        {
+            track->audioBuffer.setSize(0, 0);
+            track->sampleRate = 0.0;
+        }
+
+        return track->clips.size() != oldSize;
+    }
+
+    return false;
+}
+
+bool AudioEngine::generateChordProgression(const TrackId& trackId, const juce::String& style)
+{
+    std::scoped_lock lock(modelMutex);
+
+    if (auto* track = projectModel.findMidiTrack(trackId))
+    {
+        track->clips.push_back(createChordProgressionClip(style));
+        return true;
+    }
+
+    return false;
 }
 
 void AudioEngine::setMidiKeyboardState(juce::MidiKeyboardState* state)
@@ -345,7 +432,15 @@ bool AudioEngine::saveProject(const juce::File& file) const
 bool AudioEngine::loadProject(const juce::File& file)
 {
     std::scoped_lock lock(modelMutex);
-    return projectModel.loadFromFile(file);
+
+    if (! projectModel.loadFromFile(file))
+        return false;
+
+    for (auto& track : projectModel.getAudioTracks())
+        if (! track->clips.empty())
+            loadAudioBufferForTrack(*track, track->clips.front().sourceFile);
+
+    return true;
 }
 
 bool AudioEngine::exportToWav(const juce::File& destinationFile)
@@ -476,7 +571,12 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
         transportSamplePosition.store(nextPosition);
 
         if (getLength() > 0.0 && getPosition() >= getLength())
-            stop();
+        {
+            if (loopEnabled.load())
+                setPosition(0.0);
+            else
+                stop();
+        }
     }
 }
 
@@ -498,6 +598,22 @@ void AudioEngine::audioDeviceStopped()
 
 bool AudioEngine::loadAudioFileIntoTrack(AudioTrack& track, const juce::File& file)
 {
+    if (! loadAudioBufferForTrack(track, file))
+        return false;
+
+    track.clips.clear();
+    AudioClip clip;
+    clip.id = juce::Uuid();
+    clip.sourceFile = file;
+    clip.lengthSeconds = track.getAudioDurationSeconds();
+    clip.startTimeSeconds = getPosition();
+    track.clips.push_back(clip);
+    currentFile = file;
+    return true;
+}
+
+bool AudioEngine::loadAudioBufferForTrack(AudioTrack& track, const juce::File& file)
+{
     if (! file.existsAsFile())
         return false;
 
@@ -513,11 +629,6 @@ bool AudioEngine::loadAudioFileIntoTrack(AudioTrack& track, const juce::File& fi
 
     track.audioBuffer = std::move(newBuffer);
     track.sampleRate = reader->sampleRate;
-    track.clips.clear();
-    AudioClip clip;
-    clip.sourceFile = file;
-    clip.lengthSeconds = track.getAudioDurationSeconds();
-    track.clips.push_back(clip);
     currentFile = file;
     return true;
 }
@@ -570,28 +681,29 @@ void AudioEngine::renderAudioTracks(juce::AudioBuffer<float>& buffer,
         if (track.clips.empty())
             continue;
 
-        const auto& clip = track.clips.front();
-
-        for (auto sample = 0; sample < numSamples; ++sample)
+        for (const auto& clip : track.clips)
         {
-            const auto timeSeconds = blockStartSeconds + static_cast<double>(sample) / outputSampleRate;
-            const auto sourceTime = timeSeconds - clip.startTimeSeconds + clip.sourceOffsetSeconds;
-
-            if (sourceTime < 0.0 || sourceTime >= clip.lengthSeconds)
-                continue;
-
-            const auto sourceIndex = static_cast<int>(sourceTime * track.sampleRate);
-
-            if (sourceIndex < 0 || sourceIndex >= track.audioBuffer.getNumSamples())
-                continue;
-
-            for (auto channel = 0; channel < buffer.getNumChannels(); ++channel)
+            for (auto sample = 0; sample < numSamples; ++sample)
             {
-                const auto sourceChannel = juce::jmin(channel, track.audioBuffer.getNumChannels() - 1);
-                buffer.addSample(channel,
-                                 sample,
-                                 track.audioBuffer.getSample(sourceChannel, sourceIndex)
-                                     * track.state.gain);
+                const auto timeSeconds = blockStartSeconds + static_cast<double>(sample) / outputSampleRate;
+                const auto sourceTime = timeSeconds - clip.startTimeSeconds + clip.sourceOffsetSeconds;
+
+                if (sourceTime < 0.0 || sourceTime >= clip.lengthSeconds)
+                    continue;
+
+                const auto sourceIndex = static_cast<int>(sourceTime * track.sampleRate);
+
+                if (sourceIndex < 0 || sourceIndex >= track.audioBuffer.getNumSamples())
+                    continue;
+
+                for (auto channel = 0; channel < buffer.getNumChannels(); ++channel)
+                {
+                    const auto sourceChannel = juce::jmin(channel, track.audioBuffer.getNumChannels() - 1);
+                    buffer.addSample(channel,
+                                     sample,
+                                     track.audioBuffer.getSample(sourceChannel, sourceIndex)
+                                         * track.state.gain);
+                }
             }
         }
     }
@@ -652,6 +764,47 @@ bool AudioEngine::anySoloedTrack() const
 bool AudioEngine::shouldRenderTrack(const TrackState& state, bool anySolo) const
 {
     return ! state.muted && (! anySolo || state.solo);
+}
+
+MidiClip AudioEngine::createChordProgressionClip(const juce::String& style) const
+{
+    const auto normalized = style.toLowerCase();
+    const std::array<std::array<int, 3>, 4> pop {
+        std::array<int, 3> { 60, 64, 67 },
+        std::array<int, 3> { 67, 71, 74 },
+        std::array<int, 3> { 69, 72, 76 },
+        std::array<int, 3> { 65, 69, 72 }
+    };
+    const std::array<std::array<int, 3>, 4> minor {
+        std::array<int, 3> { 57, 60, 64 },
+        std::array<int, 3> { 65, 69, 72 },
+        std::array<int, 3> { 52, 55, 59 },
+        std::array<int, 3> { 64, 67, 71 }
+    };
+    const auto& chords = normalized.contains("minor") ? minor : pop;
+
+    MidiClip clip;
+    clip.id = juce::Uuid();
+    clip.startBeat = projectModel.getTempoMap().secondsToBeats(getPosition());
+    clip.lengthBeats = 16.0;
+
+    for (auto chordIndex = 0; chordIndex < static_cast<int>(chords.size()); ++chordIndex)
+    {
+        const auto beat = static_cast<double>(chordIndex) * 4.0;
+
+        for (const auto note : chords[static_cast<size_t>(chordIndex)])
+        {
+            auto noteOn = juce::MidiMessage::noteOn(1, note, static_cast<juce::uint8>(92));
+            noteOn.setTimeStamp(beat);
+            auto noteOff = juce::MidiMessage::noteOff(1, note);
+            noteOff.setTimeStamp(beat + 3.8);
+            clip.sequence.addEvent(noteOn);
+            clip.sequence.addEvent(noteOff);
+        }
+    }
+
+    clip.sequence.updateMatchedPairs();
+    return clip;
 }
 
 AudioTrack* AudioEngine::getFirstArmedAudioTrack()

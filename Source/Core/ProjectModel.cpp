@@ -130,7 +130,7 @@ double ProjectModel::getProjectLengthSeconds() const
 bool ProjectModel::saveToFile(const juce::File& file) const
 {
     auto root = std::make_unique<juce::DynamicObject>();
-    root->setProperty("version", 1);
+    root->setProperty("version", 2);
     root->setProperty("bpm", tempoMap.getBpm());
 
     juce::Array<juce::var> audio;
@@ -144,12 +144,18 @@ bool ProjectModel::saveToFile(const juce::File& file) const
         object->setProperty("solo", track->state.solo);
         object->setProperty("armed", track->state.armed);
 
-        if (! track->clips.empty())
+        juce::Array<juce::var> clips;
+        for (const auto& clip : track->clips)
         {
-            object->setProperty("file", track->clips.front().sourceFile.getFullPathName());
-            object->setProperty("startTimeSeconds", track->clips.front().startTimeSeconds);
-            object->setProperty("lengthSeconds", track->clips.front().lengthSeconds);
+            auto clipObject = std::make_unique<juce::DynamicObject>();
+            clipObject->setProperty("id", clip.id.toString());
+            clipObject->setProperty("file", clip.sourceFile.getFullPathName());
+            clipObject->setProperty("startTimeSeconds", clip.startTimeSeconds);
+            clipObject->setProperty("sourceOffsetSeconds", clip.sourceOffsetSeconds);
+            clipObject->setProperty("lengthSeconds", clip.lengthSeconds);
+            clips.add(juce::var(clipObject.release()));
         }
+        object->setProperty("clips", clips);
 
         audio.add(juce::var(object.release()));
     }
@@ -165,6 +171,41 @@ bool ProjectModel::saveToFile(const juce::File& file) const
         object->setProperty("muted", track->state.muted);
         object->setProperty("solo", track->state.solo);
         object->setProperty("armed", track->state.armed);
+
+        juce::Array<juce::var> clips;
+        for (const auto& clip : track->clips)
+        {
+            auto clipObject = std::make_unique<juce::DynamicObject>();
+            clipObject->setProperty("id", clip.id.toString());
+            clipObject->setProperty("startBeat", clip.startBeat);
+            clipObject->setProperty("lengthBeats", clip.lengthBeats);
+
+            juce::Array<juce::var> events;
+            for (auto i = 0; i < clip.sequence.getNumEvents(); ++i)
+            {
+                const auto* event = clip.sequence.getEventPointer(i);
+
+                if (event == nullptr)
+                    continue;
+
+                const auto& message = event->message;
+
+                if (! message.isNoteOnOrOff())
+                    continue;
+
+                auto eventObject = std::make_unique<juce::DynamicObject>();
+                eventObject->setProperty("type", message.isNoteOn() ? "noteOn" : "noteOff");
+                eventObject->setProperty("note", message.getNoteNumber());
+                eventObject->setProperty("velocity", message.getVelocity());
+                eventObject->setProperty("channel", message.getChannel());
+                eventObject->setProperty("timeStamp", message.getTimeStamp());
+                events.add(juce::var(eventObject.release()));
+            }
+
+            clipObject->setProperty("events", events);
+            clips.add(juce::var(clipObject.release()));
+        }
+        object->setProperty("clips", clips);
         midi.add(juce::var(object.release()));
     }
     root->setProperty("midiTracks", midi);
@@ -183,14 +224,90 @@ bool ProjectModel::loadFromFile(const juce::File& file)
     tempoMap.setBpm(static_cast<double>(parsed.getProperty("bpm", 120.0)));
 
     if (auto* audio = parsed.getProperty("audioTracks", {}).getArray())
+    {
         for (const auto& item : *audio)
             if (item.isObject())
-                addAudioTrack();
+            {
+                auto track = std::make_unique<AudioTrack>(item.getProperty("name", "Audio"));
+                track->state.id = TrackId(item.getProperty("id", TrackId().toString()).toString());
+                track->state.gain = static_cast<float>(static_cast<double>(item.getProperty("gain", 0.8)));
+                track->state.muted = static_cast<bool>(item.getProperty("muted", false));
+                track->state.solo = static_cast<bool>(item.getProperty("solo", false));
+                track->state.armed = static_cast<bool>(item.getProperty("armed", false));
+
+                if (auto* clips = item.getProperty("clips", {}).getArray())
+                {
+                    for (const auto& clipItem : *clips)
+                    {
+                        if (! clipItem.isObject())
+                            continue;
+
+                        AudioClip clip;
+                        clip.id = juce::Uuid(clipItem.getProperty("id", juce::Uuid().toString()).toString());
+                        clip.sourceFile = juce::File(clipItem.getProperty("file", "").toString());
+                        clip.startTimeSeconds = static_cast<double>(clipItem.getProperty("startTimeSeconds", 0.0));
+                        clip.sourceOffsetSeconds = static_cast<double>(clipItem.getProperty("sourceOffsetSeconds", 0.0));
+                        clip.lengthSeconds = static_cast<double>(clipItem.getProperty("lengthSeconds", 0.0));
+                        track->clips.push_back(clip);
+                    }
+                }
+
+                audioTracks.push_back(std::move(track));
+            }
+    }
 
     if (auto* midi = parsed.getProperty("midiTracks", {}).getArray())
+    {
         for (const auto& item : *midi)
             if (item.isObject())
-                addMidiTrack();
+            {
+                auto track = std::make_unique<MidiTrack>(item.getProperty("name", "MIDI"));
+                track->state.id = TrackId(item.getProperty("id", TrackId().toString()).toString());
+                track->state.gain = static_cast<float>(static_cast<double>(item.getProperty("gain", 0.8)));
+                track->state.muted = static_cast<bool>(item.getProperty("muted", false));
+                track->state.solo = static_cast<bool>(item.getProperty("solo", false));
+                track->state.armed = static_cast<bool>(item.getProperty("armed", false));
+
+                if (auto* clips = item.getProperty("clips", {}).getArray())
+                {
+                    for (const auto& clipItem : *clips)
+                    {
+                        if (! clipItem.isObject())
+                            continue;
+
+                        MidiClip clip;
+                        clip.id = juce::Uuid(clipItem.getProperty("id", juce::Uuid().toString()).toString());
+                        clip.startBeat = static_cast<double>(clipItem.getProperty("startBeat", 0.0));
+                        clip.lengthBeats = static_cast<double>(clipItem.getProperty("lengthBeats", 0.0));
+
+                        if (auto* events = clipItem.getProperty("events", {}).getArray())
+                        {
+                            for (const auto& eventItem : *events)
+                            {
+                                if (! eventItem.isObject())
+                                    continue;
+
+                                const auto type = eventItem.getProperty("type", "").toString();
+                                const auto channel = static_cast<int>(eventItem.getProperty("channel", 1));
+                                const auto note = static_cast<int>(eventItem.getProperty("note", 60));
+                                const auto velocity = static_cast<float>(static_cast<double>(eventItem.getProperty("velocity", 0.8)));
+                                const auto timeStamp = static_cast<double>(eventItem.getProperty("timeStamp", 0.0));
+                                auto message = type == "noteOff"
+                                    ? juce::MidiMessage::noteOff(channel, note)
+                                    : juce::MidiMessage::noteOn(channel, note, velocity);
+                                message.setTimeStamp(timeStamp);
+                                clip.sequence.addEvent(message);
+                            }
+                        }
+
+                        clip.sequence.updateMatchedPairs();
+                        track->clips.push_back(clip);
+                    }
+                }
+
+                midiTracks.push_back(std::move(track));
+            }
+    }
 
     return true;
 }

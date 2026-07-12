@@ -6,6 +6,7 @@
 
 #include <functional>
 #include <optional>
+#include <utility>
 
 class TimelineComponent final : public juce::Component,
                                 public juce::FileDragAndDropTarget
@@ -14,6 +15,9 @@ public:
     void setProjectModel(const ProjectModel* model);
     void setPosition(double seconds);
     void setPixelsPerSecond(double value);
+    void setSnapEnabled(bool enabled);
+    bool isSnapEnabled() const;
+    std::optional<std::pair<TrackId, juce::Uuid>> getSelectedAudioClip() const;
     void paint(juce::Graphics& graphics) override;
     void mouseDown(const juce::MouseEvent& event) override;
     void mouseDrag(const juce::MouseEvent& event) override;
@@ -25,14 +29,15 @@ public:
     void filesDropped(const juce::StringArray& files, int x, int y) override;
 
     std::function<void(double)> onSeek;
-    std::function<void(const TrackId&, double)> onAudioClipMoved;
-    std::function<void(const TrackId&, const TrackId&, double)> onAudioClipMovedToTrack;
+    std::function<void(const TrackId&, const juce::Uuid&, double)> onAudioClipMoved;
+    std::function<void(const TrackId&, const TrackId&, const juce::Uuid&, double)> onAudioClipMovedToTrack;
     std::function<void(const TrackId&, const juce::File&, double)> onAudioFileDropped;
 
 private:
     struct HitAudioClip
     {
         TrackId trackId;
+        juce::Uuid clipId;
         juce::Rectangle<float> bounds;
         double startTimeSeconds = 0.0;
         double lengthSeconds = 0.0;
@@ -45,12 +50,15 @@ private:
     static bool isSupportedAudioFile(const juce::File& file);
     float secondsToX(double seconds) const;
     double xToSeconds(float x) const;
+    double snapSeconds(double seconds) const;
 
     const ProjectModel* projectModel = nullptr;
     double positionSeconds = 0.0;
     double pixelsPerSecond = 100.0;
+    bool snapEnabled = true;
     bool draggingAudioClip = false;
     TrackId draggingTrackId;
+    juce::Uuid draggingClipId;
     TrackId dragPreviewTrackId;
     double dragGrabOffsetSeconds = 0.0;
     double dragPreviewStartSeconds = 0.0;
@@ -58,4 +66,5 @@ private:
     juce::String dragPreviewName;
     bool fileDragOver = false;
     juce::Point<float> fileDragPosition;
+    std::optional<std::pair<TrackId, juce::Uuid>> selectedAudioClip;
 };

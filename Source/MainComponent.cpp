@@ -75,6 +75,27 @@ MainComponent::MainComponent()
     importAudioButton.onClick = [this] { importAudioToSelectedTrack(); };
     addAndMakeVisible(importAudioButton);
 
+    duplicateClipButton.setButtonText("Duplicate Clip");
+    duplicateClipButton.onClick = [this] { duplicateSelectedClip(); };
+    addAndMakeVisible(duplicateClipButton);
+
+    deleteClipButton.setButtonText("Delete Clip");
+    deleteClipButton.onClick = [this] { deleteSelectedClip(); };
+    addAndMakeVisible(deleteClipButton);
+
+    snapButton.setButtonText("Snap");
+    snapButton.setClickingTogglesState(true);
+    snapButton.setToggleState(true, juce::dontSendNotification);
+    snapButton.onClick = [this]
+    {
+        timelineComponent.setSnapEnabled(snapButton.getToggleState());
+    };
+    addAndMakeVisible(snapButton);
+
+    aiChordsButton.setButtonText("AI Chords");
+    aiChordsButton.onClick = [this] { generateAiChordsForSelectedTrack(); };
+    addAndMakeVisible(aiChordsButton);
+
     playPauseButton.setButtonText("Play");
     playPauseButton.onClick = [this]
     {
@@ -112,6 +133,14 @@ MainComponent::MainComponent()
         timelineComponent.repaint();
     };
     addAndMakeVisible(recordButton);
+
+    loopButton.setButtonText("Loop");
+    loopButton.setClickingTogglesState(true);
+    loopButton.onClick = [this]
+    {
+        audioEngine.setLoopEnabled(loopButton.getToggleState());
+    };
+    addAndMakeVisible(loopButton);
 
     metronomeButton.setButtonText("Metronome");
     metronomeButton.setClickingTogglesState(true);
@@ -202,17 +231,20 @@ MainComponent::MainComponent()
         audioEngine.setPosition(seconds);
         updateTransportDisplay();
     };
-    timelineComponent.onAudioClipMoved = [this](const TrackId& trackId, double startTimeSeconds)
+    timelineComponent.onAudioClipMoved = [this](const TrackId& trackId,
+                                                const juce::Uuid& clipId,
+                                                double startTimeSeconds)
     {
-        audioEngine.setAudioClipStartTime(trackId, startTimeSeconds);
+        audioEngine.setAudioClipStartTime(trackId, clipId, startTimeSeconds);
         timelineComponent.repaint();
         updateTransportDisplay();
     };
     timelineComponent.onAudioClipMovedToTrack = [this](const TrackId& sourceTrackId,
                                                        const TrackId& destinationTrackId,
+                                                       const juce::Uuid& clipId,
                                                        double startTimeSeconds)
     {
-        audioEngine.moveAudioClipToTrack(sourceTrackId, destinationTrackId, startTimeSeconds);
+        audioEngine.moveAudioClipToTrack(sourceTrackId, destinationTrackId, clipId, startTimeSeconds);
         refreshTrackSelector();
         timelineComponent.repaint();
         updateTransportDisplay();
@@ -228,7 +260,11 @@ MainComponent::MainComponent()
             return;
         }
 
-        audioEngine.setAudioClipStartTime(trackId, startTimeSeconds);
+        if (const auto* track = audioEngine.getProjectModel().findAudioTrack(trackId);
+            track != nullptr && ! track->clips.empty())
+        {
+            audioEngine.setAudioClipStartTime(trackId, track->clips.back().id, startTimeSeconds);
+        }
         refreshTrackSelector();
         timelineComponent.repaint();
         updateTransportDisplay();
@@ -250,6 +286,7 @@ MainComponent::MainComponent()
     refreshTrackSelector();
     refreshMidiDevices();
     updateButtonStates();
+    setWantsKeyboardFocus(true);
     startTimerHz(30);
     setSize(1200, 700);
 }
@@ -290,6 +327,8 @@ void MainComponent::resized()
     transportBar.removeFromLeft(8);
     recordButton.setBounds(transportBar.removeFromLeft(92).reduced(0, 5));
     transportBar.removeFromLeft(12);
+    loopButton.setBounds(transportBar.removeFromLeft(72).reduced(0, 5));
+    transportBar.removeFromLeft(8);
     bpmLabel.setBounds(transportBar.removeFromLeft(38));
     bpmSlider.setBounds(transportBar.removeFromLeft(160).reduced(0, 4));
     transportBar.removeFromLeft(8);
@@ -304,6 +343,14 @@ void MainComponent::resized()
     importAudioButton.setBounds(trackBar.removeFromLeft(112).reduced(0, 5));
     trackBar.removeFromLeft(8);
     deleteTrackButton.setBounds(trackBar.removeFromLeft(80).reduced(0, 5));
+    trackBar.removeFromLeft(8);
+    duplicateClipButton.setBounds(trackBar.removeFromLeft(118).reduced(0, 5));
+    trackBar.removeFromLeft(8);
+    deleteClipButton.setBounds(trackBar.removeFromLeft(92).reduced(0, 5));
+    trackBar.removeFromLeft(8);
+    snapButton.setBounds(trackBar.removeFromLeft(62).reduced(0, 5));
+    trackBar.removeFromLeft(8);
+    aiChordsButton.setBounds(trackBar.removeFromLeft(92).reduced(0, 5));
     trackBar.removeFromLeft(8);
     armButton.setBounds(trackBar.removeFromLeft(36).reduced(0, 5));
     muteButton.setBounds(trackBar.removeFromLeft(36).reduced(0, 5));
@@ -324,6 +371,61 @@ void MainComponent::resized()
     masterVolumeSlider.setBounds(midiBar.removeFromLeft(220).reduced(0, 4));
 
     keyboardComponent.setBounds(bottom.reduced(0, 8));
+}
+
+bool MainComponent::keyPressed(const juce::KeyPress& key)
+{
+    if (const auto note = getComputerKeyboardNoteForKey(key.getKeyCode()))
+    {
+        if (! activeComputerKeyboardNotes.contains(*note))
+        {
+            activeComputerKeyboardNotes.insert(*note);
+            keyboardState.noteOn(1, *note, 0.9f);
+        }
+
+        return true;
+    }
+
+    if (key == juce::KeyPress::spaceKey)
+    {
+        if (audioEngine.isPlaying())
+            audioEngine.pause();
+        else
+            audioEngine.play();
+
+        updateButtonStates();
+        return true;
+    }
+
+    return false;
+}
+
+bool MainComponent::keyStateChanged(bool isKeyDown)
+{
+    if (isKeyDown)
+        return false;
+
+    for (auto it = activeComputerKeyboardNotes.begin(); it != activeComputerKeyboardNotes.end();)
+    {
+        const auto note = *it;
+        auto stillDown = false;
+
+        for (const auto keyCode : { 'a', 'w', 's', 'e', 'd', 'f', 't', 'g', 'y', 'h', 'u', 'j', 'k' })
+            if (getComputerKeyboardNoteForKey(keyCode).value_or(-1) == note
+                && juce::KeyPress::isKeyCurrentlyDown(keyCode))
+                stillDown = true;
+
+        if (stillDown)
+        {
+            ++it;
+            continue;
+        }
+
+        keyboardState.noteOff(1, note, 0.0f);
+        it = activeComputerKeyboardNotes.erase(it);
+    }
+
+    return true;
 }
 
 void MainComponent::timerCallback()
@@ -453,6 +555,66 @@ void MainComponent::importAudioToSelectedTrack()
         component->timelineComponent.repaint();
         component->updateTransportDisplay();
     });
+}
+
+void MainComponent::duplicateSelectedClip()
+{
+    const auto selectedClip = timelineComponent.getSelectedAudioClip();
+
+    if (! selectedClip.has_value())
+    {
+        showErrorMessage("No clip selected", "Select an audio clip before duplicating.");
+        return;
+    }
+
+    if (! audioEngine.duplicateAudioClip(selectedClip->first, selectedClip->second))
+    {
+        showErrorMessage("Duplicate failed", "The selected audio clip could not be duplicated.");
+        return;
+    }
+
+    timelineComponent.repaint();
+    updateTransportDisplay();
+}
+
+void MainComponent::deleteSelectedClip()
+{
+    const auto selectedClip = timelineComponent.getSelectedAudioClip();
+
+    if (! selectedClip.has_value())
+    {
+        showErrorMessage("No clip selected", "Select an audio clip before deleting.");
+        return;
+    }
+
+    if (! audioEngine.deleteAudioClip(selectedClip->first, selectedClip->second))
+    {
+        showErrorMessage("Delete failed", "The selected audio clip could not be deleted.");
+        return;
+    }
+
+    timelineComponent.repaint();
+    updateTransportDisplay();
+}
+
+void MainComponent::generateAiChordsForSelectedTrack()
+{
+    const auto selected = getSelectedTrack();
+
+    if (selected.type != TrackType::Midi)
+    {
+        showErrorMessage("Select MIDI track", "Select a MIDI track before generating chords.");
+        return;
+    }
+
+    if (! audioEngine.generateChordProgression(selected.id, "pop"))
+    {
+        showErrorMessage("AI Chords failed", "Could not generate a MIDI chord progression.");
+        return;
+    }
+
+    timelineComponent.repaint();
+    updateTransportDisplay();
 }
 
 void MainComponent::exportMix()
@@ -586,4 +748,27 @@ MainComponent::TrackSelection MainComponent::getSelectedTrack() const
         return { model.getMidiTracks().front()->state.id, TrackType::Midi };
 
     return {};
+}
+
+std::optional<int> MainComponent::getComputerKeyboardNoteForKey(int keyCode) const
+{
+    switch (juce::CharacterFunctions::toLowerCase(static_cast<juce_wchar>(keyCode)))
+    {
+        case 'a': return 60;
+        case 'w': return 61;
+        case 's': return 62;
+        case 'e': return 63;
+        case 'd': return 64;
+        case 'f': return 65;
+        case 't': return 66;
+        case 'g': return 67;
+        case 'y': return 68;
+        case 'h': return 69;
+        case 'u': return 70;
+        case 'j': return 71;
+        case 'k': return 72;
+        default: break;
+    }
+
+    return std::nullopt;
 }

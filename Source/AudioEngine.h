@@ -48,6 +48,8 @@ public:
     float getGain() const;
     void setMetronomeEnabled(bool enabled);
     bool isMetronomeEnabled() const;
+    void setLoopEnabled(bool enabled);
+    bool isLoopEnabled() const;
     bool isPlaying() const;
     bool isRecording() const;
     bool hasLoadedFile() const;
@@ -57,10 +59,16 @@ public:
     void setTrackMuted(const TrackId& trackId, bool muted);
     void setTrackSolo(const TrackId& trackId, bool solo);
     void setTrackArmed(const TrackId& trackId, bool armed);
-    void setAudioClipStartTime(const TrackId& trackId, double startTimeSeconds);
+    void setAudioClipStartTime(const TrackId& trackId,
+                               const juce::Uuid& clipId,
+                               double startTimeSeconds);
     void moveAudioClipToTrack(const TrackId& sourceTrackId,
                               const TrackId& destinationTrackId,
+                              const juce::Uuid& clipId,
                               double startTimeSeconds);
+    bool duplicateAudioClip(const TrackId& trackId, const juce::Uuid& clipId);
+    bool deleteAudioClip(const TrackId& trackId, const juce::Uuid& clipId);
+    bool generateChordProgression(const TrackId& trackId, const juce::String& style);
 
     void setMidiKeyboardState(juce::MidiKeyboardState* state);
     bool saveProject(const juce::File& file) const;
@@ -78,6 +86,7 @@ public:
 
 private:
     bool loadAudioFileIntoTrack(AudioTrack& track, const juce::File& file);
+    bool loadAudioBufferForTrack(AudioTrack& track, const juce::File& file);
     void renderToBuffer(juce::AudioBuffer<float>& buffer,
                         int numSamples,
                         double blockStartSeconds,
@@ -92,6 +101,7 @@ private:
                           SimpleSynth& synthToUse) const;
     bool anySoloedTrack() const;
     bool shouldRenderTrack(const TrackState& state, bool anySolo) const;
+    MidiClip createChordProgressionClip(const juce::String& style) const;
     AudioTrack* getFirstArmedAudioTrack();
     MidiTrack* getFirstArmedMidiTrack();
 
@@ -111,6 +121,7 @@ private:
     std::atomic<int64_t> transportSamplePosition { 0 };
     std::atomic<TransportState> transportState { TransportState::Stopped };
     std::atomic<float> masterGain { 0.8f };
+    std::atomic<bool> loopEnabled { false };
     std::atomic<bool> recordingMidi { false };
     juce::MidiMessageSequence activeRecordingSequence;
     double recordingStartBeats = 0.0;
