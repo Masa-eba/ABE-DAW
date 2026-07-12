@@ -7,6 +7,7 @@
 
 #include <JuceHeader.h>
 
+#include <array>
 #include <atomic>
 #include <mutex>
 #include <optional>
@@ -161,7 +162,9 @@ public:
     bool generateBassline(const TrackId& trackId, const juce::String& style);
     bool generateArpeggio(const TrackId& trackId, const juce::String& style);
     bool generateDrumPattern(const TrackId& trackId, const juce::String& style);
+    bool generateDrumFill(const TrackId& trackId, const juce::String& style);
     bool generateMelody(const TrackId& trackId, const juce::String& style);
+    bool generateDemoSong();
 
     void setMidiKeyboardState(juce::MidiKeyboardState* state);
     bool saveProject(const juce::File& file);
@@ -202,10 +205,12 @@ private:
     void applyMonoMonitoring(juce::AudioBuffer<float>& buffer) const;
     bool anySoloedTrack() const;
     bool shouldRenderTrack(const TrackState& state, bool anySolo) const;
+    static std::array<std::array<int, 3>, 4> getTriadProgression(const juce::String& style);
     MidiClip createChordProgressionClip(const juce::String& style) const;
     MidiClip createBasslineClip(const juce::String& style) const;
     MidiClip createArpeggioClip(const juce::String& style) const;
     MidiClip createDrumPatternClip(const juce::String& style) const;
+    MidiClip createDrumFillClip(const juce::String& style) const;
     MidiClip createMelodyClip(const juce::String& style) const;
     AudioTrack* getFirstArmedAudioTrack();
     MidiTrack* getFirstArmedMidiTrack();

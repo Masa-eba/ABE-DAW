@@ -54,6 +54,10 @@ MainComponent::MainComponent()
     newProjectButton.onClick = [this] { newProject(); };
     addAndMakeVisible(newProjectButton);
 
+    demoSongButton.setButtonText("Demo Song");
+    demoSongButton.onClick = [this] { generateDemoSong(); };
+    addAndMakeVisible(demoSongButton);
+
     openProjectButton.setButtonText("Open Project");
     openProjectButton.onClick = [this] { openProject(); };
     addAndMakeVisible(openProjectButton);
@@ -462,6 +466,8 @@ void MainComponent::resized()
     auto projectBar = area.removeFromTop(36);
     newProjectButton.setBounds(projectBar.removeFromLeft(72).reduced(0, 3));
     projectBar.removeFromLeft(8);
+    demoSongButton.setBounds(projectBar.removeFromLeft(104).reduced(0, 3));
+    projectBar.removeFromLeft(8);
     openProjectButton.setBounds(projectBar.removeFromLeft(120).reduced(0, 3));
     projectBar.removeFromLeft(8);
     saveProjectButton.setBounds(projectBar.removeFromLeft(78).reduced(0, 3));
@@ -718,6 +724,16 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
 
     if (key.getModifiers().isCommandDown()
         && key.getModifiers().isAltDown()
+        && key.getModifiers().isShiftDown()
+        && key.getKeyCode() == 'u')
+    {
+        generateAiDrumFillForSelectedTrack();
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isAltDown()
+        && ! key.getModifiers().isShiftDown()
         && key.getKeyCode() == 'u')
     {
         generateAiDrumsForSelectedTrack();
@@ -726,6 +742,16 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
 
     if (key.getModifiers().isCommandDown()
         && key.getModifiers().isAltDown()
+        && key.getModifiers().isShiftDown()
+        && key.getKeyCode() == 'y')
+    {
+        generateDemoSong();
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isAltDown()
+        && ! key.getModifiers().isShiftDown()
         && key.getKeyCode() == 'y')
     {
         generateAiMelodyForSelectedTrack();
@@ -1495,6 +1521,44 @@ void MainComponent::newProject()
         component->refreshTrackSelector();
         component->updateTimelineSize();
         component->updateTransportDisplay();
+        component->timelineComponent.repaint();
+    });
+}
+
+void MainComponent::generateDemoSong()
+{
+    auto options = juce::MessageBoxOptions()
+                       .withIconType(juce::MessageBoxIconType::QuestionIcon)
+                       .withTitle("Generate demo song")
+                       .withMessage("Replace the current project with a one-minute demo song?")
+                       .withButton("Generate")
+                       .withButton("Cancel");
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+
+    juce::AlertWindow::showAsync(options, [safeThis](int result)
+    {
+        if (safeThis == nullptr || result != 1)
+            return;
+
+        auto* component = safeThis.getComponent();
+
+        if (! component->audioEngine.generateDemoSong())
+        {
+            component->showErrorMessage("Demo failed", "The demo song could not be generated.");
+            return;
+        }
+
+        component->currentProjectFile = juce::File();
+        component->bpmSlider.setValue(component->audioEngine.getBpm(), juce::dontSendNotification);
+        component->updateTitleDisplay();
+        component->loopButton.setToggleState(false, juce::dontSendNotification);
+        component->timelineComponent.clearLoopRange();
+        component->refreshTrackSelector();
+        component->selectFirstTrackIfNeeded();
+        component->updateSelectedTrackControls();
+        component->updateTimelineSize();
+        component->updateTransportDisplay();
+        component->updateButtonStates();
         component->timelineComponent.repaint();
     });
 }
@@ -3423,6 +3487,27 @@ void MainComponent::generateAiDrumsForSelectedTrack()
     if (! audioEngine.generateDrumPattern(selected.id, "pop"))
     {
         showErrorMessage("AI Drums failed", "Could not generate a MIDI drum pattern.");
+        return;
+    }
+
+    timelineComponent.repaint();
+    updateTimelineSize();
+    updateTransportDisplay();
+}
+
+void MainComponent::generateAiDrumFillForSelectedTrack()
+{
+    const auto selected = getSelectedTrack();
+
+    if (selected.type != TrackType::Midi)
+    {
+        showErrorMessage("Select MIDI track", "Select a MIDI track before generating a drum fill.");
+        return;
+    }
+
+    if (! audioEngine.generateDrumFill(selected.id, "pop"))
+    {
+        showErrorMessage("AI Drum Fill failed", "Could not generate a MIDI drum fill.");
         return;
     }
 

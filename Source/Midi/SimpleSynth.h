@@ -2,11 +2,26 @@
 
 #include <JuceHeader.h>
 
+enum class SimpleSynthInstrument
+{
+    Lead,
+    Bass,
+    Guitar,
+    Drum
+};
+
 class SimpleSynthSound final : public juce::SynthesiserSound
 {
 public:
+    SimpleSynthSound(int midiChannel, SimpleSynthInstrument instrumentType);
+
     bool appliesToNote(int) override;
     bool appliesToChannel(int) override;
+    SimpleSynthInstrument getInstrument() const;
+
+private:
+    int channel = 1;
+    SimpleSynthInstrument instrument = SimpleSynthInstrument::Lead;
 };
 
 class SimpleSynthVoice final : public juce::SynthesiserVoice
@@ -22,9 +37,12 @@ public:
 private:
     juce::ADSR adsr;
     juce::ADSR::Parameters adsrParameters { 0.01f, 0.1f, 0.8f, 0.2f };
+    SimpleSynthInstrument instrument = SimpleSynthInstrument::Lead;
     double currentAngle = 0.0;
     double angleDelta = 0.0;
     float level = 0.0f;
+    int currentMidiNote = 0;
+    uint32_t noiseState = 0x12345678;
 };
 
 class SimpleSynth final

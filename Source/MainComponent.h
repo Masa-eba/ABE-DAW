@@ -58,6 +58,7 @@ private:
     void undoProjectEdit();
     void redoProjectEdit();
     void newProject();
+    void generateDemoSong();
     void goToStart();
     void goToEnd();
     void panicAllNotes();
@@ -137,6 +138,7 @@ private:
     void generateAiBassForSelectedTrack();
     void generateAiArpForSelectedTrack();
     void generateAiDrumsForSelectedTrack();
+    void generateAiDrumFillForSelectedTrack();
     void generateAiMelodyForSelectedTrack();
     void exportMix();
     void exportSelectedTrack();
@@ -168,6 +170,7 @@ private:
     juce::Label trackLabel;
     juce::Label zoomLabel;
     juce::TextButton newProjectButton;
+    juce::TextButton demoSongButton;
     juce::TextButton openProjectButton;
     juce::TextButton saveProjectButton;
     juce::TextButton exportButton;
