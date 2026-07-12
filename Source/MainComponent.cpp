@@ -60,16 +60,18 @@ MainComponent::MainComponent()
     addAudioTrackButton.setButtonText("+ Audio Track");
     addAudioTrackButton.onClick = [this]
     {
-        audioEngine.addAudioTrack();
+        const auto id = audioEngine.addAudioTrack();
         refreshTrackSelector();
+        selectTrackById(id);
     };
     addAndMakeVisible(addAudioTrackButton);
 
     addMidiTrackButton.setButtonText("+ MIDI Track");
     addMidiTrackButton.onClick = [this]
     {
-        audioEngine.addMidiTrack();
+        const auto id = audioEngine.addMidiTrack();
         refreshTrackSelector();
+        selectTrackById(id);
     };
     addAndMakeVisible(addMidiTrackButton);
 
@@ -82,13 +84,16 @@ MainComponent::MainComponent()
     {
         const auto selected = getSelectedTrack();
 
-        if (audioEngine.duplicateTrack(selected.id).isNull())
+        const auto duplicatedId = audioEngine.duplicateTrack(selected.id);
+
+        if (duplicatedId.isNull())
         {
             showErrorMessage("Duplicate failed", "The selected track could not be duplicated.");
             return;
         }
 
         refreshTrackSelector();
+        selectTrackById(duplicatedId);
         updateTimelineSize();
         timelineComponent.repaint();
     };
