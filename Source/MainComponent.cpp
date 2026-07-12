@@ -941,6 +941,12 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    if (key.getModifiers().isAltDown() && key.getKeyCode() == 'b')
+    {
+        loopCurrentBar();
+        return true;
+    }
+
     if (key.getModifiers().isAltDown() && key.getKeyCode() == ']')
     {
         cycleSnapGrid(1);
@@ -1718,6 +1724,25 @@ void MainComponent::loopSelectedClip()
     }
 
     showErrorMessage("No clip selected", "Select an audio or MIDI clip before setting a clip loop.");
+}
+
+void MainComponent::loopCurrentBar()
+{
+    const auto& tempo = audioEngine.getProjectModel().getTempoMap();
+    const auto currentBeats = tempo.secondsToBeats(audioEngine.getPosition());
+    const auto beatsPerBar = juce::jmax(1, tempo.getNumerator());
+    const auto barIndex = static_cast<int>(std::floor(currentBeats / static_cast<double>(beatsPerBar)));
+    const auto startBeat = static_cast<double>(barIndex * beatsPerBar);
+    const auto endBeat = startBeat + static_cast<double>(beatsPerBar);
+    const auto startSeconds = tempo.beatsToSeconds(startBeat);
+    const auto endSeconds = tempo.beatsToSeconds(endBeat);
+
+    audioEngine.setLoopRange(startSeconds, endSeconds);
+    timelineComponent.setLoopRange(startSeconds, endSeconds);
+    audioEngine.setPosition(startSeconds);
+    loopButton.setToggleState(true, juce::dontSendNotification);
+    updateTransportDisplay();
+    timelineComponent.repaint();
 }
 
 void MainComponent::nudgeSelectedClip(int direction)
