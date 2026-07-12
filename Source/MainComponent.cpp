@@ -590,6 +590,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isShiftDown()
+        && key.getKeyCode() == 'n')
+    {
+        normalizeSelectedAudioClip();
+        return true;
+    }
+
     if (key.getModifiers().isCommandDown() && key.getKeyCode() == juce::KeyPress::upKey)
     {
         transposeSelectedMidiClip(12);
@@ -1273,6 +1281,25 @@ void MainComponent::adjustSelectedAudioClipGain(float delta)
     if (! audioEngine.adjustAudioClipGain(selectedAudioClip->first, selectedAudioClip->second, delta))
     {
         showErrorMessage("Clip gain failed", "The selected audio clip gain could not be changed.");
+        return;
+    }
+
+    timelineComponent.repaint();
+}
+
+void MainComponent::normalizeSelectedAudioClip()
+{
+    const auto selectedAudioClip = timelineComponent.getSelectedAudioClip();
+
+    if (! selectedAudioClip.has_value())
+    {
+        showErrorMessage("No audio clip selected", "Select an audio clip before normalizing.");
+        return;
+    }
+
+    if (! audioEngine.normalizeAudioClipGain(selectedAudioClip->first, selectedAudioClip->second))
+    {
+        showErrorMessage("Normalize failed", "The selected audio clip could not be normalized.");
         return;
     }
 

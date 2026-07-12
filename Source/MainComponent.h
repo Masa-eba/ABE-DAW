@@ -56,6 +56,7 @@ private:
     void nudgeSelectedClip(int direction);
     void moveSelectedClipToPlayhead();
     void adjustSelectedAudioClipGain(float delta);
+    void normalizeSelectedAudioClip();
     void duplicateSelectedClip();
     void duplicateSelectedClipAtPlayhead();
     void toggleSelectedClipMute();

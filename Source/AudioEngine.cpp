@@ -716,6 +716,46 @@ bool AudioEngine::adjustAudioClipGain(const TrackId& trackId, const juce::Uuid& 
     return false;
 }
 
+bool AudioEngine::normalizeAudioClipGain(const TrackId& trackId, const juce::Uuid& clipId)
+{
+    std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
+
+    if (auto* track = projectModel.findAudioTrack(trackId))
+        for (auto& clip : track->clips)
+            if (clip.id == clipId)
+            {
+                if (! track->hasAudio() || track->sampleRate <= 0.0)
+                    return false;
+
+                const auto startSample = juce::jlimit(0,
+                                                      track->audioBuffer.getNumSamples(),
+                                                      static_cast<int>(clip.sourceOffsetSeconds * track->sampleRate));
+                const auto endSample = juce::jlimit(startSample,
+                                                    track->audioBuffer.getNumSamples(),
+                                                    static_cast<int>((clip.sourceOffsetSeconds + clip.lengthSeconds)
+                                                        * track->sampleRate));
+                const auto numSamples = endSample - startSample;
+
+                if (numSamples <= 0)
+                    return false;
+
+                auto peak = 0.0f;
+
+                for (auto channel = 0; channel < track->audioBuffer.getNumChannels(); ++channel)
+                    peak = juce::jmax(peak,
+                                      track->audioBuffer.getMagnitude(channel, startSample, numSamples));
+
+                if (peak <= 0.0001f)
+                    return false;
+
+                clip.gain = juce::jlimit(0.0f, 2.0f, 0.95f / peak);
+                return true;
+            }
+
+    return false;
+}
+
 bool AudioEngine::toggleAudioClipMuted(const TrackId& trackId, const juce::Uuid& clipId)
 {
     std::scoped_lock lock(modelMutex);

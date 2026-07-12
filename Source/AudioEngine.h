@@ -93,6 +93,7 @@ public:
                           double fadeInSeconds,
                           double fadeOutSeconds);
     bool adjustAudioClipGain(const TrackId& trackId, const juce::Uuid& clipId, float delta);
+    bool normalizeAudioClipGain(const TrackId& trackId, const juce::Uuid& clipId);
     bool toggleAudioClipMuted(const TrackId& trackId, const juce::Uuid& clipId);
     void setMidiClipStartBeat(const TrackId& trackId, const juce::Uuid& clipId, double startBeat);
     bool setMidiClipLength(const TrackId& trackId, const juce::Uuid& clipId, double lengthBeats);
