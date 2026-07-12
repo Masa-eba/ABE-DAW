@@ -71,6 +71,7 @@ private:
     void jumpToMarker(int direction);
     void loopSelectedClip();
     void loopCurrentBar();
+    void loopBarsFromPlayhead(int numberOfBars);
     void clearLoopRange();
     void movePlayheadByGrid(int direction, bool byBar);
     void importAudioToSelectedTrack();

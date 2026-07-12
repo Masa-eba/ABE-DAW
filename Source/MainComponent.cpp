@@ -847,6 +847,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    if (key.getModifiers().isAltDown()
+        && key.getModifiers().isShiftDown()
+        && key.getKeyCode() == 'l')
+    {
+        loopBarsFromPlayhead(8);
+        return true;
+    }
+
     if (key.getModifiers().isCommandDown()
         && key.getModifiers().isAltDown()
         && key.getKeyCode() == 'l')
@@ -1918,12 +1926,18 @@ void MainComponent::loopSelectedClip()
 
 void MainComponent::loopCurrentBar()
 {
+    loopBarsFromPlayhead(1);
+}
+
+void MainComponent::loopBarsFromPlayhead(int numberOfBars)
+{
     const auto& tempo = audioEngine.getProjectModel().getTempoMap();
     const auto currentBeats = tempo.secondsToBeats(audioEngine.getPosition());
     const auto beatsPerBar = juce::jmax(1, tempo.getNumerator());
     const auto barIndex = static_cast<int>(std::floor(currentBeats / static_cast<double>(beatsPerBar)));
     const auto startBeat = static_cast<double>(barIndex * beatsPerBar);
-    const auto endBeat = startBeat + static_cast<double>(beatsPerBar);
+    const auto safeBars = juce::jlimit(1, 64, numberOfBars);
+    const auto endBeat = startBeat + static_cast<double>(beatsPerBar * safeBars);
     const auto startSeconds = tempo.beatsToSeconds(startBeat);
     const auto endSeconds = tempo.beatsToSeconds(endBeat);
 
