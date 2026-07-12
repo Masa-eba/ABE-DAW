@@ -9,6 +9,7 @@
 
 #include <atomic>
 #include <mutex>
+#include <vector>
 
 enum class TransportState
 {
@@ -88,6 +89,8 @@ public:
     bool saveProject(const juce::File& file) const;
     bool loadProject(const juce::File& file);
     bool exportToWav(const juce::File& destinationFile);
+    bool undo();
+    bool redo();
 
     void audioDeviceIOCallbackWithContext(const float* const* inputChannelData,
                                           int numInputChannels,
@@ -118,6 +121,8 @@ private:
     MidiClip createChordProgressionClip(const juce::String& style) const;
     AudioTrack* getFirstArmedAudioTrack();
     MidiTrack* getFirstArmedMidiTrack();
+    void saveUndoSnapshotNoLock();
+    bool restoreProjectSnapshotNoLock(const juce::String& snapshot);
 
     mutable std::mutex modelMutex;
     ProjectModel projectModel;
@@ -139,6 +144,8 @@ private:
     std::atomic<bool> recordingMidi { false };
     juce::MidiMessageSequence activeRecordingSequence;
     double recordingStartBeats = 0.0;
+    std::vector<juce::String> undoStack;
+    std::vector<juce::String> redoStack;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(AudioEngine)
 };

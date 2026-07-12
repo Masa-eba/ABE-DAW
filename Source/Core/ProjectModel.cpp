@@ -127,7 +127,7 @@ double ProjectModel::getProjectLengthSeconds() const
     return length;
 }
 
-bool ProjectModel::saveToFile(const juce::File& file) const
+juce::String ProjectModel::toJsonString() const
 {
     auto root = std::make_unique<juce::DynamicObject>();
     root->setProperty("version", 2);
@@ -212,12 +212,12 @@ bool ProjectModel::saveToFile(const juce::File& file) const
     }
     root->setProperty("midiTracks", midi);
 
-    return file.replaceWithText(juce::JSON::toString(juce::var(root.release()), true));
+    return juce::JSON::toString(juce::var(root.release()), true);
 }
 
-bool ProjectModel::loadFromFile(const juce::File& file)
+bool ProjectModel::loadFromJsonString(const juce::String& json)
 {
-    const auto parsed = juce::JSON::parse(file);
+    const auto parsed = juce::JSON::parse(json);
 
     if (! parsed.isObject())
         return false;
@@ -314,6 +314,16 @@ bool ProjectModel::loadFromFile(const juce::File& file)
     }
 
     return true;
+}
+
+bool ProjectModel::saveToFile(const juce::File& file) const
+{
+    return file.replaceWithText(toJsonString());
+}
+
+bool ProjectModel::loadFromFile(const juce::File& file)
+{
+    return loadFromJsonString(file.loadFileAsString());
 }
 
 void ProjectModel::clearProject()

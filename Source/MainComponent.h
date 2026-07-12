@@ -39,6 +39,8 @@ private:
     void updateTransportDisplay();
     void updateButtonStates();
     void updateTimelineSize();
+    void undoProjectEdit();
+    void redoProjectEdit();
     void importAudioToSelectedTrack();
     void duplicateSelectedClip();
     void deleteSelectedClip();

@@ -32,6 +32,8 @@ public:
     const TempoMap& getTempoMap() const;
 
     double getProjectLengthSeconds() const;
+    juce::String toJsonString() const;
+    bool loadFromJsonString(const juce::String& json);
     bool saveToFile(const juce::File& file) const;
     bool loadFromFile(const juce::File& file);
     void clearProject();

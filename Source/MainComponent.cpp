@@ -444,6 +444,16 @@ void MainComponent::resized()
 
 bool MainComponent::keyPressed(const juce::KeyPress& key)
 {
+    if (key.getModifiers().isCommandDown() && key.getKeyCode() == 'z')
+    {
+        if (key.getModifiers().isShiftDown())
+            redoProjectEdit();
+        else
+            undoProjectEdit();
+
+        return true;
+    }
+
     if (key.getModifiers().isCommandDown() && key.getKeyCode() == 'd')
     {
         duplicateSelectedClip();
@@ -639,6 +649,28 @@ void MainComponent::updateTimelineSize()
 
     timelineComponent.setSize(juce::jmax(visibleWidth, contentWidth),
                               juce::jmax(visibleHeight, contentHeight));
+}
+
+void MainComponent::undoProjectEdit()
+{
+    if (! audioEngine.undo())
+        return;
+
+    refreshTrackSelector();
+    updateTimelineSize();
+    updateTransportDisplay();
+    timelineComponent.repaint();
+}
+
+void MainComponent::redoProjectEdit()
+{
+    if (! audioEngine.redo())
+        return;
+
+    refreshTrackSelector();
+    updateTimelineSize();
+    updateTransportDisplay();
+    timelineComponent.repaint();
 }
 
 void MainComponent::importAudioToSelectedTrack()

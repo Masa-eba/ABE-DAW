@@ -32,24 +32,28 @@ const ProjectModel& AudioEngine::getProjectModel() const
 TrackId AudioEngine::addAudioTrack()
 {
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
     return projectModel.addAudioTrack();
 }
 
 TrackId AudioEngine::addMidiTrack()
 {
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
     return projectModel.addMidiTrack();
 }
 
 bool AudioEngine::removeTrack(const TrackId& trackId)
 {
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
     return projectModel.removeTrack(trackId);
 }
 
 bool AudioEngine::loadFile(const juce::File& file)
 {
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     if (projectModel.getAudioTracks().empty())
         projectModel.addAudioTrack();
@@ -60,6 +64,7 @@ bool AudioEngine::loadFile(const juce::File& file)
 bool AudioEngine::loadAudioFileToTrack(const TrackId& trackId, const juce::File& file)
 {
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     if (auto* track = projectModel.findAudioTrack(trackId))
         return loadAudioFileIntoTrack(*track, file);
@@ -134,6 +139,7 @@ void AudioEngine::stopRecording()
 
     if (auto* track = getFirstArmedAudioTrack(); track != nullptr && lastRecordingFile.existsAsFile())
     {
+        saveUndoSnapshotNoLock();
         loadAudioFileIntoTrack(*track, lastRecordingFile);
         lastRecordingFile = juce::File();
     }
@@ -142,6 +148,7 @@ void AudioEngine::stopRecording()
     {
         if (auto* track = getFirstArmedMidiTrack())
         {
+            saveUndoSnapshotNoLock();
             activeRecordingSequence.updateMatchedPairs();
             MidiClip clip;
             clip.startBeat = recordingStartBeats;
@@ -180,6 +187,7 @@ double AudioEngine::getLength() const
 void AudioEngine::setBpm(double bpm)
 {
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
     projectModel.setBpm(bpm);
     metronome.setBpm(projectModel.getBpm());
 }
@@ -264,6 +272,7 @@ void AudioEngine::setTrackGain(const TrackId& trackId, float gain)
 void AudioEngine::setTrackMuted(const TrackId& trackId, bool muted)
 {
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     if (auto* track = projectModel.findAudioTrack(trackId))
         track->state.muted = muted;
@@ -274,6 +283,7 @@ void AudioEngine::setTrackMuted(const TrackId& trackId, bool muted)
 void AudioEngine::setTrackSolo(const TrackId& trackId, bool solo)
 {
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     if (auto* track = projectModel.findAudioTrack(trackId))
         track->state.solo = solo;
@@ -284,6 +294,7 @@ void AudioEngine::setTrackSolo(const TrackId& trackId, bool solo)
 void AudioEngine::setTrackArmed(const TrackId& trackId, bool armed)
 {
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     for (auto& track : projectModel.getAudioTracks())
         track->state.armed = false;
@@ -305,6 +316,7 @@ void AudioEngine::setAudioClipStartTime(const TrackId& trackId,
         startTimeSeconds = 0.0;
 
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     if (auto* track = projectModel.findAudioTrack(trackId))
         for (auto& clip : track->clips)
@@ -324,6 +336,7 @@ void AudioEngine::moveAudioClipToTrack(const TrackId& sourceTrackId,
         startTimeSeconds = 0.0;
 
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     auto* sourceTrack = projectModel.findAudioTrack(sourceTrackId);
     auto* destinationTrack = projectModel.findAudioTrack(destinationTrackId);
@@ -363,6 +376,7 @@ void AudioEngine::moveAudioClipToTrack(const TrackId& sourceTrackId,
 bool AudioEngine::duplicateAudioClip(const TrackId& trackId, const juce::Uuid& clipId)
 {
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     if (auto* track = projectModel.findAudioTrack(trackId))
         for (const auto& clip : track->clips)
@@ -381,6 +395,7 @@ bool AudioEngine::duplicateAudioClip(const TrackId& trackId, const juce::Uuid& c
 bool AudioEngine::deleteAudioClip(const TrackId& trackId, const juce::Uuid& clipId)
 {
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     if (auto* track = projectModel.findAudioTrack(trackId))
     {
@@ -413,6 +428,7 @@ bool AudioEngine::splitAudioClipAtPosition(const TrackId& trackId,
         return false;
 
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     if (auto* track = projectModel.findAudioTrack(trackId))
     {
@@ -455,6 +471,7 @@ bool AudioEngine::setAudioClipFade(const TrackId& trackId,
         fadeOutSeconds = 0.0;
 
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     if (auto* track = projectModel.findAudioTrack(trackId))
         for (auto& clip : track->clips)
@@ -477,6 +494,7 @@ void AudioEngine::setMidiClipStartBeat(const TrackId& trackId,
         startBeat = 0.0;
 
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     if (auto* track = projectModel.findMidiTrack(trackId))
         for (auto& clip : track->clips)
@@ -496,6 +514,7 @@ void AudioEngine::moveMidiClipToTrack(const TrackId& sourceTrackId,
         startBeat = 0.0;
 
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     auto* sourceTrack = projectModel.findMidiTrack(sourceTrackId);
     auto* destinationTrack = projectModel.findMidiTrack(destinationTrackId);
@@ -528,6 +547,7 @@ void AudioEngine::moveMidiClipToTrack(const TrackId& sourceTrackId,
 bool AudioEngine::duplicateMidiClip(const TrackId& trackId, const juce::Uuid& clipId)
 {
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     if (auto* track = projectModel.findMidiTrack(trackId))
         for (const auto& clip : track->clips)
@@ -546,6 +566,7 @@ bool AudioEngine::duplicateMidiClip(const TrackId& trackId, const juce::Uuid& cl
 bool AudioEngine::deleteMidiClip(const TrackId& trackId, const juce::Uuid& clipId)
 {
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     if (auto* track = projectModel.findMidiTrack(trackId))
     {
@@ -570,6 +591,7 @@ bool AudioEngine::quantizeMidiClip(const TrackId& trackId, const juce::Uuid& cli
         return false;
 
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     if (auto* track = projectModel.findMidiTrack(trackId))
         for (auto& clip : track->clips)
@@ -609,6 +631,7 @@ bool AudioEngine::transposeMidiClip(const TrackId& trackId, const juce::Uuid& cl
         return true;
 
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     if (auto* track = projectModel.findMidiTrack(trackId))
         for (auto& clip : track->clips)
@@ -640,6 +663,7 @@ bool AudioEngine::transposeMidiClip(const TrackId& trackId, const juce::Uuid& cl
 bool AudioEngine::generateChordProgression(const TrackId& trackId, const juce::String& style)
 {
     std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
 
     if (auto* track = projectModel.findMidiTrack(trackId))
     {
@@ -672,6 +696,8 @@ bool AudioEngine::loadProject(const juce::File& file)
         if (! track->clips.empty())
             loadAudioBufferForTrack(*track, track->clips.front().sourceFile);
 
+    undoStack.clear();
+    redoStack.clear();
     return true;
 }
 
@@ -745,6 +771,32 @@ bool AudioEngine::exportToWav(const juce::File& destinationFile)
 
     writer->flush();
     return true;
+}
+
+bool AudioEngine::undo()
+{
+    std::scoped_lock lock(modelMutex);
+
+    if (undoStack.empty())
+        return false;
+
+    redoStack.push_back(projectModel.toJsonString());
+    const auto snapshot = undoStack.back();
+    undoStack.pop_back();
+    return restoreProjectSnapshotNoLock(snapshot);
+}
+
+bool AudioEngine::redo()
+{
+    std::scoped_lock lock(modelMutex);
+
+    if (redoStack.empty())
+        return false;
+
+    undoStack.push_back(projectModel.toJsonString());
+    const auto snapshot = redoStack.back();
+    redoStack.pop_back();
+    return restoreProjectSnapshotNoLock(snapshot);
 }
 
 void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChannelData,
@@ -1065,4 +1117,32 @@ MidiTrack* AudioEngine::getFirstArmedMidiTrack()
             return track.get();
 
     return nullptr;
+}
+
+void AudioEngine::saveUndoSnapshotNoLock()
+{
+    undoStack.push_back(projectModel.toJsonString());
+
+    constexpr auto maxUndoSnapshots = 100;
+    if (undoStack.size() > maxUndoSnapshots)
+        undoStack.erase(undoStack.begin());
+
+    redoStack.clear();
+}
+
+bool AudioEngine::restoreProjectSnapshotNoLock(const juce::String& snapshot)
+{
+    if (! projectModel.loadFromJsonString(snapshot))
+        return false;
+
+    for (auto& track : projectModel.getAudioTracks())
+        if (! track->clips.empty())
+            loadAudioBufferForTrack(*track, track->clips.front().sourceFile);
+
+    const auto length = projectModel.getProjectLengthSeconds();
+
+    if (getPosition() > length)
+        setPosition(length);
+
+    return true;
 }
