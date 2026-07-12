@@ -86,6 +86,7 @@ private:
     void exportMix();
     void exportSelectedTrack();
     void saveProject();
+    void saveProjectAs();
     void openProject();
     void showErrorMessage(const juce::String& title, const juce::String& message);
     void showInfoMessage(const juce::String& title, const juce::String& message);
@@ -150,6 +151,7 @@ private:
     juce::ComboBox trackSelector;
     juce::ComboBox midiInputSelector;
     std::unique_ptr<juce::FileChooser> fileChooser;
+    juce::File currentProjectFile;
     juce::Array<juce::MidiDeviceInfo> midiDevices;
     std::set<int> activeComputerKeyboardNotes;
     int snapGridIndex = 2;

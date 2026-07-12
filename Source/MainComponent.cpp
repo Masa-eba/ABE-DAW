@@ -594,6 +594,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isShiftDown()
+        && key.getKeyCode() == 's')
+    {
+        saveProjectAs();
+        return true;
+    }
+
     if (key.getKeyCode() == juce::KeyPress::escapeKey)
     {
         panicAllNotes();
@@ -1110,6 +1118,7 @@ void MainComponent::newProject()
 
         auto* component = safeThis.getComponent();
         component->audioEngine.newProject();
+        component->currentProjectFile = juce::File();
         component->loopButton.setToggleState(false, juce::dontSendNotification);
         component->timelineComponent.clearLoopRange();
         component->refreshTrackSelector();
@@ -2195,9 +2204,26 @@ void MainComponent::exportSelectedTrack()
 
 void MainComponent::saveProject()
 {
+    if (currentProjectFile != juce::File{})
+    {
+        if (audioEngine.saveProject(currentProjectFile))
+            showInfoMessage("Project saved", "The project file was saved.");
+        else
+            showErrorMessage("Project save failed", "The project could not be saved.");
+
+        return;
+    }
+
+    saveProjectAs();
+}
+
+void MainComponent::saveProjectAs()
+{
     fileChooser = std::make_unique<juce::FileChooser>("Save project",
-                                                       juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
-                                                           .getChildFile("project.aidaw"),
+                                                       currentProjectFile != juce::File{}
+                                                           ? currentProjectFile
+                                                           : juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
+                                                               .getChildFile("project.aidaw"),
                                                        "*.aidaw");
     const auto flags = juce::FileBrowserComponent::saveMode
                      | juce::FileBrowserComponent::canSelectFiles
@@ -2220,9 +2246,14 @@ void MainComponent::saveProject()
         auto* component = safeThis.getComponent();
 
         if (component->audioEngine.saveProject(file))
+        {
+            component->currentProjectFile = file;
             component->showInfoMessage("Project saved", "The project file was saved.");
+        }
         else
+        {
             component->showErrorMessage("Project save failed", "The project could not be saved.");
+        }
     });
 }
 
@@ -2247,6 +2278,7 @@ void MainComponent::openProject()
 
         if (component->audioEngine.loadProject(file))
         {
+            component->currentProjectFile = file;
             component->loopButton.setToggleState(false, juce::dontSendNotification);
             component->timelineComponent.clearLoopRange();
             component->refreshTrackSelector();
