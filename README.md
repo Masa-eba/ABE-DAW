@@ -220,6 +220,7 @@ open build/MiniDAW_artefacts/AI-DAW.app
 - `Option + Delete` / `Option + Backspace`: 再生位置付近のマーカーを削除
 - `Option + , / .`: 前後のマーカーへ移動
 - `Option + B`: 現在の小節をループ範囲に設定
+- `Option + Shift + B`: ループ範囲を解除
 - `Command + D`: 選択中AudioClip / MidiClipを複製
 - `Command + Shift + D`: 選択中AudioClip / MidiClipを再生位置へ複製
 - `Command + Shift + M`: 選択中AudioClip / MidiClipのMute切替

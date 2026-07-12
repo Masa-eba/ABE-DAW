@@ -941,6 +941,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    if (key.getModifiers().isAltDown()
+        && key.getModifiers().isShiftDown()
+        && key.getKeyCode() == 'b')
+    {
+        clearLoopRange();
+        return true;
+    }
+
     if (key.getModifiers().isAltDown() && key.getKeyCode() == 'b')
     {
         loopCurrentBar();
@@ -1806,6 +1814,15 @@ void MainComponent::loopCurrentBar()
     audioEngine.setPosition(startSeconds);
     loopButton.setToggleState(true, juce::dontSendNotification);
     updateTransportDisplay();
+    timelineComponent.repaint();
+}
+
+void MainComponent::clearLoopRange()
+{
+    audioEngine.setLoopEnabled(false);
+    audioEngine.clearLoopRange();
+    timelineComponent.clearLoopRange();
+    loopButton.setToggleState(false, juce::dontSendNotification);
     timelineComponent.repaint();
 }
 
