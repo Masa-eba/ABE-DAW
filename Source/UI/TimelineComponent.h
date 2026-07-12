@@ -71,6 +71,10 @@ private:
     std::optional<TrackId> findMidiTrackAtY(float yPosition) const;
     std::optional<float> getAudioTrackY(const TrackId& trackId) const;
     std::optional<float> getMidiTrackY(const TrackId& trackId) const;
+    void drawAudioClipWaveform(juce::Graphics& graphics,
+                               const AudioTrack& track,
+                               const AudioClip& clip,
+                               juce::Rectangle<float> clipBounds) const;
     static bool isSupportedAudioFile(const juce::File& file);
     float secondsToX(double seconds) const;
     double xToSeconds(float x) const;

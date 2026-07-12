@@ -177,6 +177,13 @@ void TimelineComponent::paint(juce::Graphics& graphics)
                                                   static_cast<float>(juce::jmax(20, width)),
                                                   36.0f,
                                                   4.0f);
+                    drawAudioClipWaveform(graphics,
+                                          *track,
+                                          clip,
+                                          juce::Rectangle<float>(x,
+                                                                 static_cast<float>(y + 14),
+                                                                 static_cast<float>(juce::jmax(20, width)),
+                                                                 36.0f));
 
                     if (clip.fadeInSeconds > 0.0)
                     {
@@ -809,6 +816,55 @@ std::optional<TrackId> TimelineComponent::findMidiTrackAtY(float yPosition) cons
     }
 
     return std::nullopt;
+}
+
+void TimelineComponent::drawAudioClipWaveform(juce::Graphics& graphics,
+                                              const AudioTrack& track,
+                                              const AudioClip& clip,
+                                              juce::Rectangle<float> clipBounds) const
+{
+    if (! track.hasAudio() || track.sampleRate <= 0.0 || clipBounds.getWidth() <= 1.0f)
+        return;
+
+    const auto waveformBounds = clipBounds.reduced(4.0f, 5.0f);
+    const auto centreY = waveformBounds.getCentreY();
+    const auto maxHeight = waveformBounds.getHeight() * 0.5f;
+    const auto firstPixel = static_cast<int>(std::floor(waveformBounds.getX()));
+    const auto lastPixel = static_cast<int>(std::ceil(waveformBounds.getRight()));
+
+    graphics.setColour(clip.muted ? juce::Colour(0x889ca3ad) : juce::Colour(0xddeaf6ff));
+
+    for (auto pixel = firstPixel; pixel <= lastPixel; ++pixel)
+    {
+        const auto clipSecondStart = juce::jlimit(0.0,
+                                                  clip.lengthSeconds,
+                                                  (static_cast<double>(pixel) - clipBounds.getX()) / pixelsPerSecond);
+        const auto clipSecondEnd = juce::jlimit(0.0,
+                                                clip.lengthSeconds,
+                                                (static_cast<double>(pixel + 1) - clipBounds.getX()) / pixelsPerSecond);
+        const auto sourceSecondStart = clip.sourceOffsetSeconds + clipSecondStart;
+        const auto sourceSecondEnd = clip.sourceOffsetSeconds + juce::jmax(clipSecondStart, clipSecondEnd);
+        const auto startSample = juce::jlimit(0,
+                                              track.audioBuffer.getNumSamples(),
+                                              static_cast<int>(sourceSecondStart * track.sampleRate));
+        const auto endSample = juce::jlimit(startSample,
+                                            track.audioBuffer.getNumSamples(),
+                                            static_cast<int>(std::ceil(sourceSecondEnd * track.sampleRate)));
+        const auto numSamples = endSample - startSample;
+
+        if (numSamples <= 0)
+            continue;
+
+        auto peak = 0.0f;
+
+        for (auto channel = 0; channel < track.audioBuffer.getNumChannels(); ++channel)
+            peak = juce::jmax(peak,
+                              track.audioBuffer.getMagnitude(channel, startSample, numSamples));
+
+        const auto gain = juce::jlimit(0.0f, 2.0f, clip.gain);
+        const auto height = juce::jlimit(1.0f, maxHeight, peak * gain * maxHeight);
+        graphics.drawVerticalLine(pixel, centreY - height, centreY + height);
+    }
 }
 
 bool TimelineComponent::isSupportedAudioFile(const juce::File& file)
