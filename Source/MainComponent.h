@@ -133,6 +133,7 @@ private:
     juce::Slider bpmSlider;
     juce::Slider zoomSlider;
     juce::Slider masterVolumeSlider;
+    juce::TextButton monoButton;
     juce::Slider trackVolumeSlider;
     juce::Slider trackPanSlider;
     juce::ComboBox trackSelector;

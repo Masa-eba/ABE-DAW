@@ -1422,6 +1422,7 @@ bool AudioEngine::exportToWav(const juce::File& destinationFile)
         }
 
         buffer.applyGain(masterGain.load());
+        applyMonoMonitoring(buffer);
 
         for (auto channel = 0; channel < buffer.getNumChannels(); ++channel)
             for (auto sample = 0; sample < buffer.getNumSamples(); ++sample)
@@ -1463,6 +1464,16 @@ bool AudioEngine::redo()
     return restoreProjectSnapshotNoLock(snapshot);
 }
 
+void AudioEngine::setMonoMonitoringEnabled(bool enabled)
+{
+    monoMonitoringEnabled.store(enabled);
+}
+
+bool AudioEngine::isMonoMonitoringEnabled() const
+{
+    return monoMonitoringEnabled.load();
+}
+
 void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChannelData,
                                                    int numInputChannels,
                                                    float* const* outputChannelData,
@@ -1498,6 +1509,7 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
     }
 
     renderBuffer.applyGain(masterGain.load());
+    applyMonoMonitoring(renderBuffer);
     auto peak = 0.0f;
 
     for (auto channel = 0; channel < renderBuffer.getNumChannels(); ++channel)
@@ -1750,6 +1762,20 @@ void AudioEngine::renderMidiTracks(juce::AudioBuffer<float>& buffer,
     }
 
     synthToUse.renderNextBlock(buffer, midiMessages, 0, numSamples);
+}
+
+void AudioEngine::applyMonoMonitoring(juce::AudioBuffer<float>& buffer) const
+{
+    if (! monoMonitoringEnabled.load() || buffer.getNumChannels() < 2)
+        return;
+
+    for (auto sample = 0; sample < buffer.getNumSamples(); ++sample)
+    {
+        const auto mono = (buffer.getSample(0, sample) + buffer.getSample(1, sample)) * 0.5f;
+
+        for (auto channel = 0; channel < buffer.getNumChannels(); ++channel)
+            buffer.setSample(channel, sample, mono);
+    }
 }
 
 bool AudioEngine::anySoloedTrack() const

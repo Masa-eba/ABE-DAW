@@ -128,6 +128,8 @@ public:
     bool exportToWav(const juce::File& destinationFile);
     bool undo();
     bool redo();
+    void setMonoMonitoringEnabled(bool enabled);
+    bool isMonoMonitoringEnabled() const;
 
     void audioDeviceIOCallbackWithContext(const float* const* inputChannelData,
                                           int numInputChannels,
@@ -153,6 +155,7 @@ private:
                           double blockStartSeconds,
                           juce::MidiBuffer& midiBuffer,
                           SimpleSynth& synthToUse) const;
+    void applyMonoMonitoring(juce::AudioBuffer<float>& buffer) const;
     bool anySoloedTrack() const;
     bool shouldRenderTrack(const TrackState& state, bool anySolo) const;
     MidiClip createChordProgressionClip(const juce::String& style) const;
@@ -179,6 +182,7 @@ private:
     std::atomic<float> masterGain { 0.8f };
     std::atomic<float> lastOutputPeak { 0.0f };
     std::atomic<float> heldOutputPeak { 0.0f };
+    std::atomic<bool> monoMonitoringEnabled { false };
     std::atomic<bool> loopEnabled { false };
     std::atomic<double> loopStartSeconds { 0.0 };
     std::atomic<double> loopEndSeconds { 0.0 };

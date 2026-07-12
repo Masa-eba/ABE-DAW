@@ -289,6 +289,14 @@ MainComponent::MainComponent()
     };
     addAndMakeVisible(masterVolumeSlider);
 
+    monoButton.setButtonText("Mono");
+    monoButton.setClickingTogglesState(true);
+    monoButton.onClick = [this]
+    {
+        audioEngine.setMonoMonitoringEnabled(monoButton.getToggleState());
+    };
+    addAndMakeVisible(monoButton);
+
     trackVolumeSlider.setSliderStyle(juce::Slider::LinearHorizontal);
     trackVolumeSlider.setTextBoxStyle(juce::Slider::TextBoxRight, false, 56, 22);
     trackVolumeSlider.setRange(0.0, 1.0, 0.01);
@@ -538,12 +546,14 @@ void MainComponent::resized()
     masterLabel.setBounds(midiBar.removeFromLeft(58));
     masterVolumeSlider.setBounds(midiBar.removeFromLeft(220).reduced(0, 4));
     midiBar.removeFromLeft(16);
+    monoButton.setBounds(midiBar.removeFromLeft(64).reduced(0, 5));
+    midiBar.removeFromLeft(16);
     peakLabel.setBounds(midiBar.removeFromLeft(110));
     midiBar.removeFromLeft(16);
     resetPeakButton.setBounds(midiBar.removeFromLeft(90).reduced(0, 5));
     midiBar.removeFromLeft(16);
     zoomLabel.setBounds(midiBar.removeFromLeft(48));
-    zoomSlider.setBounds(midiBar.removeFromLeft(220).reduced(0, 4));
+    zoomSlider.setBounds(midiBar.removeFromLeft(160).reduced(0, 4));
 
     keyboardComponent.setBounds(bottom.reduced(0, 8));
     updateTimelineSize();
