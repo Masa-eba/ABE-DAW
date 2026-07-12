@@ -1492,6 +1492,69 @@ bool AudioEngine::staccatoMidiClip(const TrackId& trackId, const juce::Uuid& cli
     return false;
 }
 
+bool AudioEngine::reverseMidiClip(const TrackId& trackId, const juce::Uuid& clipId)
+{
+    std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
+
+    if (auto* track = projectModel.findMidiTrack(trackId))
+        for (auto& clip : track->clips)
+            if (clip.id == clipId)
+            {
+                if (clip.lengthBeats <= 0.0)
+                    return false;
+
+                clip.sequence.updateMatchedPairs();
+                juce::MidiMessageSequence reversedSequence;
+
+                const auto addAt = [](juce::MidiMessageSequence& sequence,
+                                      juce::MidiMessage message,
+                                      double beat)
+                {
+                    message.setTimeStamp(juce::jmax(0.0, beat));
+                    sequence.addEvent(message);
+                };
+
+                for (auto i = 0; i < clip.sequence.getNumEvents(); ++i)
+                {
+                    const auto* event = clip.sequence.getEventPointer(i);
+
+                    if (event == nullptr)
+                        continue;
+
+                    const auto message = event->message;
+                    const auto timeStamp = message.getTimeStamp();
+
+                    if (message.isNoteOn())
+                    {
+                        const auto endBeat = event->noteOffObject != nullptr
+                            ? event->noteOffObject->message.getTimeStamp()
+                            : juce::jmin(clip.lengthBeats, timeStamp + 0.25);
+                        const auto reversedStart = juce::jlimit(0.0, clip.lengthBeats, clip.lengthBeats - endBeat);
+                        const auto reversedEnd = juce::jlimit(reversedStart + 0.05,
+                                                             clip.lengthBeats,
+                                                             clip.lengthBeats - timeStamp);
+
+                        addAt(reversedSequence, message, reversedStart);
+                        addAt(reversedSequence,
+                              juce::MidiMessage::noteOff(message.getChannel(), message.getNoteNumber()),
+                              reversedEnd);
+                    }
+                    else if (! message.isNoteOff())
+                    {
+                        addAt(reversedSequence, message, clip.lengthBeats - timeStamp);
+                    }
+                }
+
+                clip.sequence = reversedSequence;
+                clip.sequence.sort();
+                clip.sequence.updateMatchedPairs();
+                return true;
+            }
+
+    return false;
+}
+
 bool AudioEngine::toggleMidiClipMuted(const TrackId& trackId, const juce::Uuid& clipId)
 {
     std::scoped_lock lock(modelMutex);

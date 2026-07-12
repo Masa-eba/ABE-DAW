@@ -219,6 +219,7 @@ open build/MiniDAW_artefacts/AI-DAW.app
 - `Command + = / -`: 選択中AudioClipのClip Gainを上下
 - `Command + Shift + N`: 選択中AudioClipのClip Gainをピーク基準でNormalize
 - `Command + Shift + R`: 選択中AudioClipのReverse切替
+- `Command + Option + R`: 選択中MidiClipを時間反転
 - `Command + K`: 選択中MidiClipを現在のスナップグリッドでクオンタイズ
 - `Command + Option + K`: 選択中MidiClipを現在のスナップグリッドでSwing Quantize
 - `Command + ↑ / ↓`: 選択中MidiClipを1オクターブ上下に移調

@@ -88,6 +88,7 @@ private:
     void humanizeSelectedMidiClipTiming();
     void legatoSelectedMidiClip();
     void staccatoSelectedMidiClip();
+    void reverseSelectedMidiClip();
     void generateAiChordsForSelectedTrack();
     void generateAiBassForSelectedTrack();
     void generateAiArpForSelectedTrack();

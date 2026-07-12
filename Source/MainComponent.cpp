@@ -728,6 +728,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
     }
 
     if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isAltDown()
+        && key.getKeyCode() == 'r')
+    {
+        reverseSelectedMidiClip();
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown()
         && key.getModifiers().isShiftDown()
         && key.getKeyCode() == 'r')
     {
@@ -2292,6 +2300,25 @@ void MainComponent::staccatoSelectedMidiClip()
     if (! audioEngine.staccatoMidiClip(selectedMidiClip->first, selectedMidiClip->second))
     {
         showErrorMessage("Staccato failed", "The selected MIDI clip could not be made staccato.");
+        return;
+    }
+
+    timelineComponent.repaint();
+}
+
+void MainComponent::reverseSelectedMidiClip()
+{
+    const auto selectedMidiClip = timelineComponent.getSelectedMidiClip();
+
+    if (! selectedMidiClip.has_value())
+    {
+        showErrorMessage("No MIDI clip selected", "Select a MIDI clip before reversing.");
+        return;
+    }
+
+    if (! audioEngine.reverseMidiClip(selectedMidiClip->first, selectedMidiClip->second))
+    {
+        showErrorMessage("Reverse failed", "The selected MIDI clip could not be reversed.");
         return;
     }
 
