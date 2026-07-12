@@ -208,6 +208,23 @@ juce::Uuid ProjectModel::addMarker(double timeSeconds)
     return id;
 }
 
+bool ProjectModel::renameMarker(const juce::Uuid& markerId, const juce::String& name)
+{
+    const auto cleaned = name.trim();
+
+    if (cleaned.isEmpty())
+        return false;
+
+    for (auto& marker : markers)
+        if (marker.id == markerId)
+        {
+            marker.name = cleaned;
+            return true;
+        }
+
+    return false;
+}
+
 bool ProjectModel::removeNearestMarker(double timeSeconds, double thresholdSeconds)
 {
     if (markers.empty())

@@ -50,6 +50,7 @@ public:
     void setBpm(double bpm);
     double getBpm() const;
     juce::Uuid addMarker(double timeSeconds);
+    bool renameMarker(const juce::Uuid& markerId, const juce::String& name);
     bool removeNearestMarker(double timeSeconds, double thresholdSeconds);
     void setGain(float gain);
     float getGain() const;

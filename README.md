@@ -150,12 +150,13 @@ open build/MiniDAW_artefacts/AI-DAW.app
 27. `Option + ← / →`で再生位置を前後の拍へ移動
 28. `Option + Shift + ← / →`で再生位置を前後の小節へ移動
 29. `Option + M`で現在位置にマーカーを追加
-30. `Option + Delete`で再生位置付近のマーカーを削除
-31. `Option + , / .`で前後のマーカーへ移動
-32. `M / S / Volume / Pan`でトラックを調整
-33. `Loop Clip`で選択中AudioClip / MidiClipの範囲を繰り返し再生
-34. `Loop`でプロジェクト長の範囲を繰り返し再生
-35. `Panic`または`Esc`で鳴りっぱなしのMIDIノートを停止
+30. `Option + Shift + M`で再生位置付近のマーカー名を変更
+31. `Option + Delete`で再生位置付近のマーカーを削除
+32. `Option + , / .`で前後のマーカーへ移動
+33. `M / S / Volume / Pan`でトラックを調整
+34. `Loop Clip`で選択中AudioClip / MidiClipの範囲を繰り返し再生
+35. `Loop`でプロジェクト長の範囲を繰り返し再生
+36. `Panic`または`Esc`で鳴りっぱなしのMIDIノートを停止
 36. `Export Mix`でミックス結果を書き出す
 
 ## プロジェクト保存
@@ -176,6 +177,7 @@ open build/MiniDAW_artefacts/AI-DAW.app
 - `Option + Shift + ↑ / ↓`: 選択中トラックを同種トラック内で上下へ移動
 - `Option + [ / ]`: スナップグリッドを4分、8分、16分、32分で切り替え
 - `Option + M`: 現在位置にマーカーを追加
+- `Option + Shift + M`: 再生位置付近のマーカー名を変更
 - `Option + Delete` / `Option + Backspace`: 再生位置付近のマーカーを削除
 - `Option + , / .`: 前後のマーカーへ移動
 - `Command + D`: 選択中AudioClip / MidiClipを複製

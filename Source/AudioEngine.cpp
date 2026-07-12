@@ -273,6 +273,13 @@ juce::Uuid AudioEngine::addMarker(double timeSeconds)
     return projectModel.addMarker(timeSeconds);
 }
 
+bool AudioEngine::renameMarker(const juce::Uuid& markerId, const juce::String& name)
+{
+    std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
+    return projectModel.renameMarker(markerId, name);
+}
+
 bool AudioEngine::removeNearestMarker(double timeSeconds, double thresholdSeconds)
 {
     std::scoped_lock lock(modelMutex);

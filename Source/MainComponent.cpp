@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cmath>
+#include <limits>
 
 MainComponent::MainComponent()
     : keyboardComponent(keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard),
@@ -678,6 +679,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    if (key.getModifiers().isAltDown()
+        && key.getModifiers().isShiftDown()
+        && key.getKeyCode() == 'm')
+    {
+        renameMarkerNearPlayhead();
+        return true;
+    }
+
     if (key.getModifiers().isAltDown() && key.getKeyCode() == 'm')
     {
         addMarkerAtPlayhead();
@@ -995,6 +1004,62 @@ void MainComponent::addMarkerAtPlayhead()
     audioEngine.addMarker(audioEngine.getPosition());
     updateTimelineSize();
     timelineComponent.repaint();
+}
+
+void MainComponent::renameMarkerNearPlayhead()
+{
+    const auto thresholdSeconds = audioEngine.getProjectModel().getTempoMap()
+                                      .beatsToSeconds(timelineComponent.getSnapGridBeats()) * 0.5;
+    const auto currentPosition = audioEngine.getPosition();
+    const ProjectMarker* nearestMarker = nullptr;
+    auto nearestDistance = std::numeric_limits<double>::max();
+
+    for (const auto& marker : audioEngine.getProjectModel().getMarkers())
+    {
+        const auto distance = std::abs(marker.timeSeconds - currentPosition);
+
+        if (distance < nearestDistance)
+        {
+            nearestDistance = distance;
+            nearestMarker = &marker;
+        }
+    }
+
+    if (nearestMarker == nullptr || nearestDistance > thresholdSeconds)
+    {
+        showErrorMessage("No marker nearby", "Move the playhead close to a marker before renaming it.");
+        return;
+    }
+
+    auto* window = new juce::AlertWindow("Rename marker",
+                                         "Enter a new marker name.",
+                                         juce::AlertWindow::NoIcon);
+    window->addTextEditor("markerName", nearestMarker->name, "Marker name:");
+    window->addButton("Rename", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    window->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+
+    const auto markerId = nearestMarker->id;
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    window->enterModalState(true,
+                            juce::ModalCallbackFunction::create([safeThis, markerId, window](int result)
+                            {
+                                std::unique_ptr<juce::AlertWindow> ownedWindow(window);
+
+                                if (safeThis == nullptr || result != 1)
+                                    return;
+
+                                auto* component = safeThis.getComponent();
+                                const auto name = ownedWindow->getTextEditorContents("markerName");
+
+                                if (! component->audioEngine.renameMarker(markerId, name))
+                                {
+                                    component->showErrorMessage("Rename failed", "The marker could not be renamed.");
+                                    return;
+                                }
+
+                                component->timelineComponent.repaint();
+                            }),
+                            false);
 }
 
 void MainComponent::removeMarkerNearPlayhead()
