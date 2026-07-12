@@ -16,6 +16,8 @@ public:
     void setPosition(double seconds);
     void setPixelsPerSecond(double value);
     void setSnapEnabled(bool enabled);
+    void setLoopRange(double startSeconds, double endSeconds);
+    void clearLoopRange();
     bool isSnapEnabled() const;
     std::optional<std::pair<TrackId, juce::Uuid>> getSelectedAudioClip() const;
     std::optional<std::pair<TrackId, juce::Uuid>> getSelectedMidiClip() const;
@@ -71,6 +73,9 @@ private:
     const ProjectModel* projectModel = nullptr;
     double positionSeconds = 0.0;
     double pixelsPerSecond = 100.0;
+    bool hasLoopRange = false;
+    double loopStartSeconds = 0.0;
+    double loopEndSeconds = 0.0;
     bool snapEnabled = true;
     bool draggingAudioClip = false;
     TrackId draggingTrackId;

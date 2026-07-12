@@ -187,7 +187,10 @@ MainComponent::MainComponent()
     {
         audioEngine.setLoopEnabled(loopButton.getToggleState());
         if (! loopButton.getToggleState())
+        {
             audioEngine.clearLoopRange();
+            timelineComponent.clearLoopRange();
+        }
     };
     addAndMakeVisible(loopButton);
 
@@ -823,6 +826,7 @@ void MainComponent::newProject()
         auto* component = safeThis.getComponent();
         component->audioEngine.newProject();
         component->loopButton.setToggleState(false, juce::dontSendNotification);
+        component->timelineComponent.clearLoopRange();
         component->refreshTrackSelector();
         component->updateTimelineSize();
         component->updateTransportDisplay();
@@ -930,6 +934,8 @@ void MainComponent::loopSelectedClip()
                 {
                     audioEngine.setLoopRange(clip.startTimeSeconds,
                                              clip.startTimeSeconds + clip.lengthSeconds);
+                    timelineComponent.setLoopRange(clip.startTimeSeconds,
+                                                   clip.startTimeSeconds + clip.lengthSeconds);
                     audioEngine.setPosition(clip.startTimeSeconds);
                     loopButton.setToggleState(true, juce::dontSendNotification);
                     updateTransportDisplay();
@@ -948,6 +954,7 @@ void MainComponent::loopSelectedClip()
                     const auto startSeconds = tempo.beatsToSeconds(clip.startBeat);
                     const auto endSeconds = tempo.beatsToSeconds(clip.startBeat + clip.lengthBeats);
                     audioEngine.setLoopRange(startSeconds, endSeconds);
+                    timelineComponent.setLoopRange(startSeconds, endSeconds);
                     audioEngine.setPosition(startSeconds);
                     loopButton.setToggleState(true, juce::dontSendNotification);
                     updateTransportDisplay();
@@ -1369,6 +1376,8 @@ void MainComponent::openProject()
 
         if (component->audioEngine.loadProject(file))
         {
+            component->loopButton.setToggleState(false, juce::dontSendNotification);
+            component->timelineComponent.clearLoopRange();
             component->refreshTrackSelector();
             component->timelineComponent.repaint();
             component->updateTimelineSize();

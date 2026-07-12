@@ -1,5 +1,7 @@
 #include "TimelineComponent.h"
 
+#include <cmath>
+
 namespace
 {
 constexpr auto headerHeight = 30;
@@ -28,6 +30,28 @@ void TimelineComponent::setPixelsPerSecond(double value)
 void TimelineComponent::setSnapEnabled(bool enabled)
 {
     snapEnabled = enabled;
+    repaint();
+}
+
+void TimelineComponent::setLoopRange(double startSeconds, double endSeconds)
+{
+    if (! std::isfinite(startSeconds) || ! std::isfinite(endSeconds) || endSeconds <= startSeconds)
+    {
+        clearLoopRange();
+        return;
+    }
+
+    hasLoopRange = true;
+    loopStartSeconds = juce::jmax(0.0, startSeconds);
+    loopEndSeconds = juce::jmax(loopStartSeconds, endSeconds);
+    repaint();
+}
+
+void TimelineComponent::clearLoopRange()
+{
+    hasLoopRange = false;
+    loopStartSeconds = 0.0;
+    loopEndSeconds = 0.0;
     repaint();
 }
 
@@ -210,6 +234,31 @@ void TimelineComponent::paint(juce::Graphics& graphics)
 
             y += trackHeight;
         }
+    }
+
+    if (hasLoopRange)
+    {
+        const auto loopX = secondsToX(loopStartSeconds);
+        const auto loopWidth = static_cast<float>((loopEndSeconds - loopStartSeconds) * pixelsPerSecond);
+        const auto loopArea = juce::Rectangle<float>(
+            loopX,
+            static_cast<float>(headerHeight),
+            juce::jmax(1.0f, loopWidth),
+            static_cast<float>(getHeight() - headerHeight));
+
+        graphics.setColour(juce::Colour(0x22ffc857));
+        graphics.fillRect(loopArea);
+        graphics.setColour(juce::Colour(0xaaffc857));
+        graphics.drawLine(loopArea.getX(), 0.0f, loopArea.getX(), static_cast<float>(getHeight()), 1.5f);
+        graphics.drawLine(loopArea.getRight(), 0.0f, loopArea.getRight(), static_cast<float>(getHeight()), 1.5f);
+        graphics.setFont(juce::Font(juce::FontOptions(12.0f, juce::Font::bold)));
+        graphics.drawText("Loop",
+                          static_cast<int>(loopArea.getX()) + 6,
+                          5,
+                          60,
+                          18,
+                          juce::Justification::left,
+                          true);
     }
 
     if (draggingAudioClip)
