@@ -60,6 +60,7 @@ private:
     void movePlayheadByGrid(int direction, bool byBar);
     void importAudioToSelectedTrack();
     void nudgeSelectedClip(int direction);
+    void trimSelectedClipEnd(int direction);
     void moveSelectedClipToPlayhead();
     void adjustSelectedAudioClipGain(float delta);
     void normalizeSelectedAudioClip();

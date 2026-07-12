@@ -693,6 +693,22 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isShiftDown()
+        && key.getKeyCode() == juce::KeyPress::leftKey)
+    {
+        trimSelectedClipEnd(-1);
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isShiftDown()
+        && key.getKeyCode() == juce::KeyPress::rightKey)
+    {
+        trimSelectedClipEnd(1);
+        return true;
+    }
+
     if (key.getModifiers().isCommandDown() && key.getKeyCode() == juce::KeyPress::leftKey)
     {
         nudgeSelectedClip(-1);
@@ -1400,6 +1416,64 @@ void MainComponent::nudgeSelectedClip(int direction)
     }
 
     showErrorMessage("No clip selected", "Select an audio or MIDI clip before nudging.");
+}
+
+void MainComponent::trimSelectedClipEnd(int direction)
+{
+    if (direction == 0)
+        return;
+
+    const auto& tempo = audioEngine.getProjectModel().getTempoMap();
+    const auto stepBeats = timelineComponent.getSnapGridBeats();
+    const auto stepSeconds = tempo.beatsToSeconds(stepBeats);
+
+    if (const auto selectedAudioClip = timelineComponent.getSelectedAudioClip())
+    {
+        if (const auto* track = audioEngine.getProjectModel().findAudioTrack(selectedAudioClip->first))
+            for (const auto& clip : track->clips)
+                if (clip.id == selectedAudioClip->second)
+                {
+                    if (! audioEngine.setAudioClipTiming(selectedAudioClip->first,
+                                                         selectedAudioClip->second,
+                                                         clip.startTimeSeconds,
+                                                         clip.sourceOffsetSeconds,
+                                                         clip.lengthSeconds
+                                                             + static_cast<double>(direction) * stepSeconds))
+                    {
+                        showErrorMessage("Trim failed", "The selected audio clip could not be trimmed further.");
+                        return;
+                    }
+
+                    updateTimelineSize();
+                    updateTransportDisplay();
+                    timelineComponent.repaint();
+                    return;
+                }
+    }
+
+    if (const auto selectedMidiClip = timelineComponent.getSelectedMidiClip())
+    {
+        if (const auto* track = audioEngine.getProjectModel().findMidiTrack(selectedMidiClip->first))
+            for (const auto& clip : track->clips)
+                if (clip.id == selectedMidiClip->second)
+                {
+                    if (! audioEngine.setMidiClipLength(selectedMidiClip->first,
+                                                        selectedMidiClip->second,
+                                                        clip.lengthBeats
+                                                            + static_cast<double>(direction) * stepBeats))
+                    {
+                        showErrorMessage("Trim failed", "The selected MIDI clip could not be trimmed further.");
+                        return;
+                    }
+
+                    updateTimelineSize();
+                    updateTransportDisplay();
+                    timelineComponent.repaint();
+                    return;
+                }
+    }
+
+    showErrorMessage("No clip selected", "Select an audio or MIDI clip before trimming.");
 }
 
 void MainComponent::moveSelectedClipToPlayhead()
