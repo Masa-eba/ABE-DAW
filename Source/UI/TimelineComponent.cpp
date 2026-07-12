@@ -7,6 +7,8 @@ namespace
 constexpr auto headerHeight = 30;
 constexpr auto trackHeight = 72;
 constexpr auto labelWidth = 150;
+constexpr auto trimHandleWidth = 8.0f;
+constexpr auto minimumAudioClipLengthSeconds = 0.05;
 }
 
 void TimelineComponent::setProjectModel(const ProjectModel* model)
@@ -116,7 +118,8 @@ void TimelineComponent::paint(juce::Graphics& graphics)
 
             if (track->hasAudio())
             {
-                const auto isDraggedClip = draggingAudioClip && track->state.id == draggingTrackId;
+                const auto isDraggedClip = (draggingAudioClip || trimmingAudioClip)
+                                        && track->state.id == draggingTrackId;
 
                 if (isDraggedClip)
                 {
@@ -261,7 +264,7 @@ void TimelineComponent::paint(juce::Graphics& graphics)
                           true);
     }
 
-    if (draggingAudioClip)
+    if (draggingAudioClip || trimmingAudioClip)
     {
         if (const auto previewY = getAudioTrackY(dragPreviewTrackId))
         {
@@ -351,17 +354,27 @@ void TimelineComponent::mouseDown(const juce::MouseEvent& event)
 {
     if (auto hit = findAudioClipAt(event.position))
     {
-        draggingAudioClip = true;
+        const auto leftDistance = std::abs(event.position.x - hit->bounds.getX());
+        const auto rightDistance = std::abs(event.position.x - hit->bounds.getRight());
+        trimmingAudioClip = leftDistance <= trimHandleWidth || rightDistance <= trimHandleWidth;
+        trimmingAudioClipLeftEdge = leftDistance <= rightDistance;
+        draggingAudioClip = ! trimmingAudioClip;
         draggingTrackId = hit->trackId;
         draggingClipId = hit->clipId;
         dragPreviewTrackId = hit->trackId;
         dragGrabOffsetSeconds = xToSeconds(event.position.x) - hit->startTimeSeconds;
+        trimOriginalStartSeconds = hit->startTimeSeconds;
+        trimOriginalSourceOffsetSeconds = hit->sourceOffsetSeconds;
+        trimOriginalLengthSeconds = hit->lengthSeconds;
+        trimSourceDurationSeconds = hit->sourceDurationSeconds;
         dragPreviewStartSeconds = hit->startTimeSeconds;
+        dragPreviewSourceOffsetSeconds = hit->sourceOffsetSeconds;
         dragPreviewLengthSeconds = hit->lengthSeconds;
         dragPreviewName = hit->name;
         selectedAudioClip = std::make_pair(hit->trackId, hit->clipId);
         selectedMidiClip.reset();
-        setMouseCursor(juce::MouseCursor::DraggingHandCursor);
+        setMouseCursor(trimmingAudioClip ? juce::MouseCursor::LeftRightResizeCursor
+                                         : juce::MouseCursor::DraggingHandCursor);
         repaint();
         return;
     }
@@ -407,6 +420,34 @@ void TimelineComponent::mouseDrag(const juce::MouseEvent& event)
         return;
     }
 
+    if (trimmingAudioClip)
+    {
+        const auto originalEnd = trimOriginalStartSeconds + trimOriginalLengthSeconds;
+        auto targetSeconds = snapSeconds(xToSeconds(event.position.x));
+
+        if (trimmingAudioClipLeftEdge)
+        {
+            const auto earliestStart = juce::jmax(0.0, trimOriginalStartSeconds - trimOriginalSourceOffsetSeconds);
+            targetSeconds = juce::jlimit(earliestStart, originalEnd - minimumAudioClipLengthSeconds, targetSeconds);
+            dragPreviewStartSeconds = targetSeconds;
+            dragPreviewSourceOffsetSeconds = trimOriginalSourceOffsetSeconds
+                                           + (targetSeconds - trimOriginalStartSeconds);
+            dragPreviewLengthSeconds = originalEnd - targetSeconds;
+        }
+        else
+        {
+            const auto latestEnd = trimOriginalStartSeconds
+                                 + juce::jmax(0.0, trimSourceDurationSeconds - trimOriginalSourceOffsetSeconds);
+            targetSeconds = juce::jlimit(trimOriginalStartSeconds + minimumAudioClipLengthSeconds,
+                                         latestEnd,
+                                         targetSeconds);
+            dragPreviewLengthSeconds = targetSeconds - trimOriginalStartSeconds;
+        }
+
+        repaint();
+        return;
+    }
+
     if (draggingMidiClip && projectModel != nullptr)
     {
         dragPreviewMidiTrackId = findMidiTrackAtY(event.position.y).value_or(dragPreviewMidiTrackId);
@@ -444,6 +485,18 @@ void TimelineComponent::mouseUp(const juce::MouseEvent& event)
         selectedAudioClip = std::make_pair(dragPreviewTrackId, draggingClipId);
     }
 
+    if (trimmingAudioClip)
+    {
+        if (onAudioClipTrimmed)
+            onAudioClipTrimmed(draggingTrackId,
+                               draggingClipId,
+                               dragPreviewStartSeconds,
+                               dragPreviewSourceOffsetSeconds,
+                               dragPreviewLengthSeconds);
+
+        selectedAudioClip = std::make_pair(draggingTrackId, draggingClipId);
+    }
+
     if (draggingMidiClip)
     {
         if (dragPreviewMidiTrackId == draggingMidiTrackId)
@@ -463,9 +516,16 @@ void TimelineComponent::mouseUp(const juce::MouseEvent& event)
     }
 
     draggingAudioClip = false;
+    trimmingAudioClip = false;
+    trimmingAudioClipLeftEdge = false;
     draggingMidiClip = false;
     dragGrabOffsetSeconds = 0.0;
+    trimOriginalStartSeconds = 0.0;
+    trimOriginalSourceOffsetSeconds = 0.0;
+    trimOriginalLengthSeconds = 0.0;
+    trimSourceDurationSeconds = 0.0;
     dragPreviewStartSeconds = 0.0;
+    dragPreviewSourceOffsetSeconds = 0.0;
     dragPreviewLengthSeconds = 0.0;
     dragPreviewName.clear();
     dragGrabOffsetBeats = 0.0;
@@ -545,22 +605,24 @@ std::optional<TimelineComponent::HitAudioClip> TimelineComponent::findAudioClipA
         {
             for (const auto& clip : track->clips)
             {
-            const auto clipBounds = juce::Rectangle<float>(
-                secondsToX(clip.startTimeSeconds),
-                static_cast<float>(y + 14),
-                static_cast<float>(juce::jmax(20, static_cast<int>(clip.lengthSeconds * pixelsPerSecond))),
-                36.0f);
-            const auto hitBounds = clipBounds.expanded(4.0f, 8.0f);
+                const auto clipBounds = juce::Rectangle<float>(
+                    secondsToX(clip.startTimeSeconds),
+                    static_cast<float>(y + 14),
+                    static_cast<float>(juce::jmax(20, static_cast<int>(clip.lengthSeconds * pixelsPerSecond))),
+                    36.0f);
+                const auto hitBounds = clipBounds.expanded(4.0f, 8.0f);
 
-            if (hitBounds.contains(position))
-                return HitAudioClip {
-                    track->state.id,
-                    clip.id,
-                    hitBounds,
-                    clip.startTimeSeconds,
-                    clip.lengthSeconds,
-                    clip.sourceFile.getFileName()
-                };
+                if (hitBounds.contains(position))
+                    return HitAudioClip {
+                        track->state.id,
+                        clip.id,
+                        clipBounds,
+                        clip.startTimeSeconds,
+                        clip.sourceOffsetSeconds,
+                        clip.lengthSeconds,
+                        track->getAudioDurationSeconds(),
+                        clip.sourceFile.getFileName()
+                    };
             }
         }
 

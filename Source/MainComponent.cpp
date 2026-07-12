@@ -323,6 +323,21 @@ MainComponent::MainComponent()
         timelineComponent.repaint();
         updateTransportDisplay();
     };
+    timelineComponent.onAudioClipTrimmed = [this](const TrackId& trackId,
+                                                  const juce::Uuid& clipId,
+                                                  double startTimeSeconds,
+                                                  double sourceOffsetSeconds,
+                                                  double lengthSeconds)
+    {
+        audioEngine.setAudioClipTiming(trackId,
+                                       clipId,
+                                       startTimeSeconds,
+                                       sourceOffsetSeconds,
+                                       lengthSeconds);
+        updateTimelineSize();
+        timelineComponent.repaint();
+        updateTransportDisplay();
+    };
     timelineComponent.onAudioClipMovedToTrack = [this](const TrackId& sourceTrackId,
                                                        const TrackId& destinationTrackId,
                                                        const juce::Uuid& clipId,

@@ -75,6 +75,11 @@ public:
                               const TrackId& destinationTrackId,
                               const juce::Uuid& clipId,
                               double startTimeSeconds);
+    bool setAudioClipTiming(const TrackId& trackId,
+                            const juce::Uuid& clipId,
+                            double startTimeSeconds,
+                            double sourceOffsetSeconds,
+                            double lengthSeconds);
     bool duplicateAudioClip(const TrackId& trackId, const juce::Uuid& clipId);
     bool deleteAudioClip(const TrackId& trackId, const juce::Uuid& clipId);
     bool splitAudioClipAtPosition(const TrackId& trackId, const juce::Uuid& clipId, double positionSeconds);

@@ -33,6 +33,7 @@ public:
 
     std::function<void(double)> onSeek;
     std::function<void(const TrackId&, const juce::Uuid&, double)> onAudioClipMoved;
+    std::function<void(const TrackId&, const juce::Uuid&, double, double, double)> onAudioClipTrimmed;
     std::function<void(const TrackId&, const TrackId&, const juce::Uuid&, double)> onAudioClipMovedToTrack;
     std::function<void(const TrackId&, const juce::Uuid&, double)> onMidiClipMoved;
     std::function<void(const TrackId&, const TrackId&, const juce::Uuid&, double)> onMidiClipMovedToTrack;
@@ -45,7 +46,9 @@ private:
         juce::Uuid clipId;
         juce::Rectangle<float> bounds;
         double startTimeSeconds = 0.0;
+        double sourceOffsetSeconds = 0.0;
         double lengthSeconds = 0.0;
+        double sourceDurationSeconds = 0.0;
         juce::String name;
     };
 
@@ -78,11 +81,18 @@ private:
     double loopEndSeconds = 0.0;
     bool snapEnabled = true;
     bool draggingAudioClip = false;
+    bool trimmingAudioClip = false;
+    bool trimmingAudioClipLeftEdge = false;
     TrackId draggingTrackId;
     juce::Uuid draggingClipId;
     TrackId dragPreviewTrackId;
     double dragGrabOffsetSeconds = 0.0;
+    double trimOriginalStartSeconds = 0.0;
+    double trimOriginalSourceOffsetSeconds = 0.0;
+    double trimOriginalLengthSeconds = 0.0;
+    double trimSourceDurationSeconds = 0.0;
     double dragPreviewStartSeconds = 0.0;
+    double dragPreviewSourceOffsetSeconds = 0.0;
     double dragPreviewLengthSeconds = 0.0;
     juce::String dragPreviewName;
     bool draggingMidiClip = false;

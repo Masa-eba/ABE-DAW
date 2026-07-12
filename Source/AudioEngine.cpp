@@ -500,6 +500,52 @@ void AudioEngine::moveAudioClipToTrack(const TrackId& sourceTrackId,
     }
 }
 
+bool AudioEngine::setAudioClipTiming(const TrackId& trackId,
+                                     const juce::Uuid& clipId,
+                                     double startTimeSeconds,
+                                     double sourceOffsetSeconds,
+                                     double lengthSeconds)
+{
+    if (! std::isfinite(startTimeSeconds)
+        || ! std::isfinite(sourceOffsetSeconds)
+        || ! std::isfinite(lengthSeconds))
+        return false;
+
+    std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
+
+    if (auto* track = projectModel.findAudioTrack(trackId))
+    {
+        const auto sourceDuration = track->getAudioDurationSeconds();
+
+        for (auto& clip : track->clips)
+        {
+            if (clip.id != clipId)
+                continue;
+
+            const auto safeOffset = juce::jlimit(0.0, sourceDuration, sourceOffsetSeconds);
+            const auto maxLength = juce::jmax(0.0, sourceDuration - safeOffset);
+
+            if (maxLength < 0.05)
+                return false;
+
+            const auto safeLength = juce::jlimit(0.05, maxLength, lengthSeconds);
+
+            if (safeLength <= 0.0)
+                return false;
+
+            clip.startTimeSeconds = juce::jmax(0.0, startTimeSeconds);
+            clip.sourceOffsetSeconds = safeOffset;
+            clip.lengthSeconds = safeLength;
+            clip.fadeInSeconds = juce::jlimit(0.0, clip.lengthSeconds * 0.5, clip.fadeInSeconds);
+            clip.fadeOutSeconds = juce::jlimit(0.0, clip.lengthSeconds * 0.5, clip.fadeOutSeconds);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool AudioEngine::duplicateAudioClip(const TrackId& trackId, const juce::Uuid& clipId)
 {
     std::scoped_lock lock(modelMutex);
@@ -1195,9 +1241,10 @@ void AudioEngine::renderAudioTracks(juce::AudioBuffer<float>& buffer,
             for (auto sample = 0; sample < numSamples; ++sample)
             {
                 const auto timeSeconds = blockStartSeconds + static_cast<double>(sample) / outputSampleRate;
-                const auto sourceTime = timeSeconds - clip.startTimeSeconds + clip.sourceOffsetSeconds;
+                const auto clipTime = timeSeconds - clip.startTimeSeconds;
+                const auto sourceTime = clipTime + clip.sourceOffsetSeconds;
 
-                if (sourceTime < 0.0 || sourceTime >= clip.lengthSeconds)
+                if (clipTime < 0.0 || clipTime >= clip.lengthSeconds)
                     continue;
 
                 const auto sourceIndex = static_cast<int>(sourceTime * track.sampleRate);
@@ -1207,11 +1254,11 @@ void AudioEngine::renderAudioTracks(juce::AudioBuffer<float>& buffer,
 
                 auto clipGain = track.state.gain * clip.gain;
 
-                if (clip.fadeInSeconds > 0.0 && sourceTime < clip.fadeInSeconds)
-                    clipGain *= static_cast<float>(sourceTime / clip.fadeInSeconds);
+                if (clip.fadeInSeconds > 0.0 && clipTime < clip.fadeInSeconds)
+                    clipGain *= static_cast<float>(clipTime / clip.fadeInSeconds);
 
-                if (clip.fadeOutSeconds > 0.0 && sourceTime > clip.lengthSeconds - clip.fadeOutSeconds)
-                    clipGain *= static_cast<float>((clip.lengthSeconds - sourceTime) / clip.fadeOutSeconds);
+                if (clip.fadeOutSeconds > 0.0 && clipTime > clip.lengthSeconds - clip.fadeOutSeconds)
+                    clipGain *= static_cast<float>((clip.lengthSeconds - clipTime) / clip.fadeOutSeconds);
 
                 clipGain = juce::jlimit(0.0f, 1.0f, clipGain);
                 const auto pan = juce::jlimit(-1.0f, 1.0f, track.state.pan);
