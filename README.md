@@ -180,6 +180,7 @@ open build/MiniDAW_artefacts/AI-DAW.app
 - `Esc`: Panic / All Notes Off
 - `Command + Z`: Undo
 - `Command + Shift + Z`: Redo
+- `Command + Shift + A`: 全トラックのRecord Armを解除
 - `Command + Shift + U`: 全トラックのMute / Soloを解除
 - `Command + ← / →`: 選択中AudioClip / MidiClipを現在のスナップグリッド単位で左右へ移動
 - `Command + J`: 選択中AudioClip / MidiClipを再生位置へ移動

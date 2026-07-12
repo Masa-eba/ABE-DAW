@@ -627,6 +627,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
 
     if (key.getModifiers().isCommandDown()
         && key.getModifiers().isShiftDown()
+        && key.getKeyCode() == 'a')
+    {
+        clearAllTrackArms();
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isShiftDown()
         && key.getKeyCode() == 'u')
     {
         clearAllTrackMuteSolo();
@@ -1286,6 +1294,13 @@ void MainComponent::renameSelectedTrack()
 void MainComponent::clearAllTrackMuteSolo()
 {
     audioEngine.clearTrackMuteSolo();
+    updateSelectedTrackControls();
+    timelineComponent.repaint();
+}
+
+void MainComponent::clearAllTrackArms()
+{
+    audioEngine.clearTrackArms();
     updateSelectedTrackControls();
     timelineComponent.repaint();
 }

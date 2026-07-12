@@ -75,6 +75,7 @@ public:
     void setTrackSolo(const TrackId& trackId, bool solo);
     void setTrackArmed(const TrackId& trackId, bool armed);
     void clearTrackMuteSolo();
+    void clearTrackArms();
     void setAudioClipStartTime(const TrackId& trackId,
                                const juce::Uuid& clipId,
                                double startTimeSeconds);

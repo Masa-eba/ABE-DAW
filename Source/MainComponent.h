@@ -47,6 +47,7 @@ private:
     void panicAllNotes();
     void renameSelectedTrack();
     void clearAllTrackMuteSolo();
+    void clearAllTrackArms();
     void moveSelectedTrack(int direction);
     void cycleSnapGrid(int direction);
     void updateSnapButtonText();

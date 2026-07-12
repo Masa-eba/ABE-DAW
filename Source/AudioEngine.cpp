@@ -489,6 +489,18 @@ void AudioEngine::clearTrackMuteSolo()
     }
 }
 
+void AudioEngine::clearTrackArms()
+{
+    std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
+
+    for (auto& track : projectModel.getAudioTracks())
+        track->state.armed = false;
+
+    for (auto& track : projectModel.getMidiTracks())
+        track->state.armed = false;
+}
+
 void AudioEngine::setAudioClipStartTime(const TrackId& trackId,
                                         const juce::Uuid& clipId,
                                         double startTimeSeconds)
