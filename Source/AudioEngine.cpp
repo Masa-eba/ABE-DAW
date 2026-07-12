@@ -1385,6 +1385,52 @@ bool AudioEngine::legatoMidiClip(const TrackId& trackId, const juce::Uuid& clipI
     return false;
 }
 
+bool AudioEngine::staccatoMidiClip(const TrackId& trackId, const juce::Uuid& clipId)
+{
+    std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
+
+    if (auto* track = projectModel.findMidiTrack(trackId))
+        for (auto& clip : track->clips)
+            if (clip.id == clipId)
+            {
+                clip.sequence.updateMatchedPairs();
+                auto changed = false;
+
+                for (auto i = 0; i < clip.sequence.getNumEvents(); ++i)
+                {
+                    auto* noteOnEvent = clip.sequence.getEventPointer(i);
+
+                    if (noteOnEvent == nullptr || ! noteOnEvent->message.isNoteOn())
+                        continue;
+
+                    auto* noteOffEvent = noteOnEvent->noteOffObject;
+
+                    if (noteOffEvent == nullptr)
+                        continue;
+
+                    const auto startBeat = noteOnEvent->message.getTimeStamp();
+                    const auto currentEndBeat = noteOffEvent->message.getTimeStamp();
+                    const auto targetEndBeat = juce::jlimit(startBeat + 0.05,
+                                                           currentEndBeat,
+                                                           startBeat + 0.25);
+
+                    if (targetEndBeat < currentEndBeat)
+                    {
+                        noteOffEvent->message.setTimeStamp(targetEndBeat);
+                        changed = true;
+                    }
+                }
+
+                if (changed)
+                    clip.sequence.updateMatchedPairs();
+
+                return changed;
+            }
+
+    return false;
+}
+
 bool AudioEngine::toggleMidiClipMuted(const TrackId& trackId, const juce::Uuid& clipId)
 {
     std::scoped_lock lock(modelMutex);

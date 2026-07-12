@@ -214,6 +214,7 @@ open build/MiniDAW_artefacts/AI-DAW.app
 - `Command + Shift + H`: 選択中MidiClipのVelocityをHumanize
 - `Command + Option + H`: 選択中MidiClipのタイミングをHumanize
 - `Command + Shift + L`: 選択中MidiClipのノート長をLegato化
+- `Command + Option + L`: 選択中MidiClipのノート長をStaccato化
 - `Delete` / `Backspace`: 選択中AudioClip / MidiClipを削除
 
 ## ディレクトリ構成

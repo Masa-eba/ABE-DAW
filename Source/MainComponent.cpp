@@ -686,6 +686,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
     }
 
     if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isAltDown()
+        && key.getKeyCode() == 'l')
+    {
+        staccatoSelectedMidiClip();
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown()
         && key.getModifiers().isShiftDown()
         && key.getKeyCode() == 'l')
     {
@@ -2003,6 +2011,25 @@ void MainComponent::legatoSelectedMidiClip()
     if (! audioEngine.legatoMidiClip(selectedMidiClip->first, selectedMidiClip->second))
     {
         showErrorMessage("Legato failed", "The selected MIDI clip could not be made legato.");
+        return;
+    }
+
+    timelineComponent.repaint();
+}
+
+void MainComponent::staccatoSelectedMidiClip()
+{
+    const auto selectedMidiClip = timelineComponent.getSelectedMidiClip();
+
+    if (! selectedMidiClip.has_value())
+    {
+        showErrorMessage("No MIDI clip selected", "Select a MIDI clip before applying staccato.");
+        return;
+    }
+
+    if (! audioEngine.staccatoMidiClip(selectedMidiClip->first, selectedMidiClip->second))
+    {
+        showErrorMessage("Staccato failed", "The selected MIDI clip could not be made staccato.");
         return;
     }
 

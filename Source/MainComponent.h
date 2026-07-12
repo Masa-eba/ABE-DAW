@@ -80,6 +80,7 @@ private:
     void humanizeSelectedMidiClipVelocity();
     void humanizeSelectedMidiClipTiming();
     void legatoSelectedMidiClip();
+    void staccatoSelectedMidiClip();
     void generateAiChordsForSelectedTrack();
     void generateAiBassForSelectedTrack();
     void exportMix();
