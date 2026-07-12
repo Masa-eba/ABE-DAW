@@ -504,6 +504,18 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    if (key.getModifiers().isCommandDown() && key.getKeyCode() == '=')
+    {
+        adjustSelectedAudioClipGain(0.1f);
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown() && key.getKeyCode() == '-')
+    {
+        adjustSelectedAudioClipGain(-0.1f);
+        return true;
+    }
+
     if (key.getKeyCode() == juce::KeyPress::deleteKey
         || key.getKeyCode() == juce::KeyPress::backspaceKey)
     {
@@ -768,6 +780,25 @@ void MainComponent::importAudioToSelectedTrack()
         component->updateTimelineSize();
         component->updateTransportDisplay();
     });
+}
+
+void MainComponent::adjustSelectedAudioClipGain(float delta)
+{
+    const auto selectedAudioClip = timelineComponent.getSelectedAudioClip();
+
+    if (! selectedAudioClip.has_value())
+    {
+        showErrorMessage("No audio clip selected", "Select an audio clip before changing clip gain.");
+        return;
+    }
+
+    if (! audioEngine.adjustAudioClipGain(selectedAudioClip->first, selectedAudioClip->second, delta))
+    {
+        showErrorMessage("Clip gain failed", "The selected audio clip gain could not be changed.");
+        return;
+    }
+
+    timelineComponent.repaint();
 }
 
 void MainComponent::duplicateSelectedClip()

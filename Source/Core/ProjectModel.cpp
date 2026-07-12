@@ -155,6 +155,7 @@ juce::String ProjectModel::toJsonString() const
             clipObject->setProperty("lengthSeconds", clip.lengthSeconds);
             clipObject->setProperty("fadeInSeconds", clip.fadeInSeconds);
             clipObject->setProperty("fadeOutSeconds", clip.fadeOutSeconds);
+            clipObject->setProperty("gain", clip.gain);
             clips.add(juce::var(clipObject.release()));
         }
         object->setProperty("clips", clips);
@@ -252,6 +253,7 @@ bool ProjectModel::loadFromJsonString(const juce::String& json)
                         clip.lengthSeconds = static_cast<double>(clipItem.getProperty("lengthSeconds", 0.0));
                         clip.fadeInSeconds = static_cast<double>(clipItem.getProperty("fadeInSeconds", 0.0));
                         clip.fadeOutSeconds = static_cast<double>(clipItem.getProperty("fadeOutSeconds", 0.0));
+                        clip.gain = static_cast<float>(static_cast<double>(clipItem.getProperty("gain", 1.0)));
                         track->clips.push_back(clip);
                     }
                 }

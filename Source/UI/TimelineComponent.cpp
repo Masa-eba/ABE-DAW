@@ -154,8 +154,13 @@ void TimelineComponent::paint(juce::Graphics& graphics)
                                                       2.0f);
                     }
 
+                    auto clipLabel = clip.sourceFile.getFileName();
+
+                    if (std::abs(clip.gain - 1.0f) > 0.01f)
+                        clipLabel += "  x" + juce::String(clip.gain, 1);
+
                     graphics.setColour(juce::Colours::white);
-                    graphics.drawText(clip.sourceFile.getFileName(),
+                    graphics.drawText(clipLabel,
                                       static_cast<int>(x) + 8,
                                       y + 20,
                                       juce::jmax(20, width) - 16,

@@ -11,4 +11,5 @@ struct AudioClip
     double lengthSeconds = 0.0;
     double fadeInSeconds = 0.0;
     double fadeOutSeconds = 0.0;
+    float gain = 1.0f;
 };

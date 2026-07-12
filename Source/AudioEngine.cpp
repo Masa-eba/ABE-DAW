@@ -508,6 +508,25 @@ bool AudioEngine::setAudioClipFade(const TrackId& trackId,
     return false;
 }
 
+bool AudioEngine::adjustAudioClipGain(const TrackId& trackId, const juce::Uuid& clipId, float delta)
+{
+    if (! std::isfinite(delta) || delta == 0.0f)
+        return false;
+
+    std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
+
+    if (auto* track = projectModel.findAudioTrack(trackId))
+        for (auto& clip : track->clips)
+            if (clip.id == clipId)
+            {
+                clip.gain = juce::jlimit(0.0f, 2.0f, clip.gain + delta);
+                return true;
+            }
+
+    return false;
+}
+
 void AudioEngine::setMidiClipStartBeat(const TrackId& trackId,
                                        const juce::Uuid& clipId,
                                        double startBeat)
@@ -1044,7 +1063,7 @@ void AudioEngine::renderAudioTracks(juce::AudioBuffer<float>& buffer,
                 if (sourceIndex < 0 || sourceIndex >= track.audioBuffer.getNumSamples())
                     continue;
 
-                auto clipGain = track.state.gain;
+                auto clipGain = track.state.gain * clip.gain;
 
                 if (clip.fadeInSeconds > 0.0 && sourceTime < clip.fadeInSeconds)
                     clipGain *= static_cast<float>(sourceTime / clip.fadeInSeconds);

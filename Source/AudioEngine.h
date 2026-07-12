@@ -76,6 +76,7 @@ public:
                           const juce::Uuid& clipId,
                           double fadeInSeconds,
                           double fadeOutSeconds);
+    bool adjustAudioClipGain(const TrackId& trackId, const juce::Uuid& clipId, float delta);
     void setMidiClipStartBeat(const TrackId& trackId, const juce::Uuid& clipId, double startBeat);
     void moveMidiClipToTrack(const TrackId& sourceTrackId,
                              const TrackId& destinationTrackId,
