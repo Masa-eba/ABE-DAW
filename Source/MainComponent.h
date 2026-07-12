@@ -66,6 +66,7 @@ private:
     void splitSelectedClip();
     void fadeInSelectedClip();
     void fadeOutSelectedClip();
+    void clearSelectedAudioClipFades();
     void quantizeSelectedMidiClip();
     void transposeSelectedMidiClip(int semitones);
     void adjustSelectedMidiClipVelocity(float delta);

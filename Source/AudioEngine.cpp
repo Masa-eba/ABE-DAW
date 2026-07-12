@@ -704,6 +704,23 @@ bool AudioEngine::setAudioClipFade(const TrackId& trackId,
     return false;
 }
 
+bool AudioEngine::clearAudioClipFades(const TrackId& trackId, const juce::Uuid& clipId)
+{
+    std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
+
+    if (auto* track = projectModel.findAudioTrack(trackId))
+        for (auto& clip : track->clips)
+            if (clip.id == clipId)
+            {
+                clip.fadeInSeconds = 0.0;
+                clip.fadeOutSeconds = 0.0;
+                return true;
+            }
+
+    return false;
+}
+
 bool AudioEngine::adjustAudioClipGain(const TrackId& trackId, const juce::Uuid& clipId, float delta)
 {
     if (! std::isfinite(delta) || delta == 0.0f)

@@ -584,6 +584,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
     }
 
     if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isAltDown()
+        && key.getKeyCode() == 'f')
+    {
+        clearSelectedAudioClipFades();
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown()
         && key.getModifiers().isShiftDown()
         && key.getKeyCode() == 'm')
     {
@@ -1621,6 +1629,25 @@ void MainComponent::fadeOutSelectedClip()
 
     if (! audioEngine.setAudioClipFade(selectedClip->first, selectedClip->second, fadeInSeconds, 1.0))
         showErrorMessage("Fade failed", "The selected audio clip could not be faded.");
+
+    timelineComponent.repaint();
+}
+
+void MainComponent::clearSelectedAudioClipFades()
+{
+    const auto selectedClip = timelineComponent.getSelectedAudioClip();
+
+    if (! selectedClip.has_value())
+    {
+        showErrorMessage("No clip selected", "Select an audio clip before clearing fades.");
+        return;
+    }
+
+    if (! audioEngine.clearAudioClipFades(selectedClip->first, selectedClip->second))
+    {
+        showErrorMessage("Fade failed", "The selected audio clip fades could not be cleared.");
+        return;
+    }
 
     timelineComponent.repaint();
 }

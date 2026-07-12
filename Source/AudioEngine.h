@@ -93,6 +93,7 @@ public:
                           const juce::Uuid& clipId,
                           double fadeInSeconds,
                           double fadeOutSeconds);
+    bool clearAudioClipFades(const TrackId& trackId, const juce::Uuid& clipId);
     bool adjustAudioClipGain(const TrackId& trackId, const juce::Uuid& clipId, float delta);
     bool normalizeAudioClipGain(const TrackId& trackId, const juce::Uuid& clipId);
     bool toggleAudioClipMuted(const TrackId& trackId, const juce::Uuid& clipId);
