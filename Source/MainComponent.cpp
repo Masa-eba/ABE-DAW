@@ -791,6 +791,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
     }
 
     if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isAltDown()
+        && key.getKeyCode() == 'm')
+    {
+        addMarkerAtSelectedClip();
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown()
         && key.getModifiers().isShiftDown()
         && key.getKeyCode() == 'u')
     {
@@ -1591,6 +1599,48 @@ void MainComponent::addMarkerAtPlayhead()
     audioEngine.addMarker(audioEngine.getPosition());
     updateTimelineSize();
     timelineComponent.repaint();
+}
+
+void MainComponent::addMarkerAtSelectedClip()
+{
+    if (const auto selectedAudioClip = timelineComponent.getSelectedAudioClip())
+    {
+        if (const auto* track = audioEngine.getProjectModel().findAudioTrack(selectedAudioClip->first))
+        {
+            for (const auto& clip : track->clips)
+            {
+                if (clip.id != selectedAudioClip->second)
+                    continue;
+
+                const auto markerId = audioEngine.addMarker(clip.startTimeSeconds);
+                audioEngine.renameMarker(markerId, clip.sourceFile.getFileNameWithoutExtension());
+                updateTimelineSize();
+                timelineComponent.repaint();
+                return;
+            }
+        }
+    }
+
+    if (const auto selectedMidiClip = timelineComponent.getSelectedMidiClip())
+    {
+        if (const auto* track = audioEngine.getProjectModel().findMidiTrack(selectedMidiClip->first))
+        {
+            for (const auto& clip : track->clips)
+            {
+                if (clip.id != selectedMidiClip->second)
+                    continue;
+
+                const auto startSeconds = audioEngine.getProjectModel().getTempoMap().beatsToSeconds(clip.startBeat);
+                const auto markerId = audioEngine.addMarker(startSeconds);
+                audioEngine.renameMarker(markerId, track->state.name + " MIDI Clip");
+                updateTimelineSize();
+                timelineComponent.repaint();
+                return;
+            }
+        }
+    }
+
+    showErrorMessage("No clip selected", "Select an audio or MIDI clip before adding a marker.");
 }
 
 void MainComponent::renameMarkerNearPlayhead()

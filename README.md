@@ -225,6 +225,7 @@ open build/MiniDAW_artefacts/AI-DAW.app
 - `Option + = / -`: メトロノーム音量を上下
 - `Option + [ / ]`: スナップグリッドを4分、8分、16分、32分で切り替え
 - `Option + M`: 現在位置にマーカーを追加
+- `Command + Option + M`: 選択中AudioClip / MidiClipの先頭にマーカーを追加
 - `Option + Shift + M`: 再生位置付近のマーカー名を変更
 - `Option + Delete` / `Option + Backspace`: 再生位置付近のマーカーを削除
 - `Option + , / .`: 前後のマーカーへ移動
