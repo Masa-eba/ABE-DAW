@@ -1539,6 +1539,53 @@ bool AudioEngine::setMidiClipVelocity(const TrackId& trackId, const juce::Uuid& 
     return false;
 }
 
+bool AudioEngine::accentMidiClipVelocity(const TrackId& trackId, const juce::Uuid& clipId)
+{
+    std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
+
+    if (auto* track = projectModel.findMidiTrack(trackId))
+        for (auto& clip : track->clips)
+            if (clip.id == clipId)
+            {
+                auto changed = false;
+
+                for (auto i = 0; i < clip.sequence.getNumEvents(); ++i)
+                {
+                    auto* event = clip.sequence.getEventPointer(i);
+
+                    if (event == nullptr || ! event->message.isNoteOn())
+                        continue;
+
+                    const auto beat = event->message.getTimeStamp();
+                    const auto sixteenthIndex = static_cast<int>(std::round(beat * 4.0));
+                    const auto stepInBar = ((sixteenthIndex % 16) + 16) % 16;
+                    auto velocity = 0.64f;
+
+                    if (stepInBar == 0)
+                        velocity = 1.0f;
+                    else if (stepInBar == 8)
+                        velocity = 0.86f;
+                    else if ((stepInBar % 4) == 0)
+                        velocity = 0.78f;
+                    else if ((stepInBar % 2) == 0)
+                        velocity = 0.68f;
+                    else
+                        velocity = 0.52f;
+
+                    event->message.setVelocity(velocity);
+                    changed = true;
+                }
+
+                if (changed)
+                    clip.sequence.updateMatchedPairs();
+
+                return changed;
+            }
+
+    return false;
+}
+
 bool AudioEngine::humanizeMidiClipVelocity(const TrackId& trackId,
                                            const juce::Uuid& clipId,
                                            float amount)

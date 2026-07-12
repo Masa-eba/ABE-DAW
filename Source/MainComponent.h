@@ -104,6 +104,7 @@ private:
     void layerSelectedMidiClipOctave(int semitones);
     void adjustSelectedMidiClipVelocity(float delta);
     void setSelectedMidiClipVelocity(float velocity);
+    void accentSelectedMidiClipVelocity();
     void humanizeSelectedMidiClipVelocity();
     void humanizeSelectedMidiClipTiming();
     void legatoSelectedMidiClip();

@@ -775,6 +775,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
     }
 
     if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isAltDown()
+        && key.getKeyCode() == 'a')
+    {
+        accentSelectedMidiClipVelocity();
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown()
         && key.getModifiers().isShiftDown()
         && key.getKeyCode() == 'u')
     {
@@ -2803,6 +2811,25 @@ void MainComponent::setSelectedMidiClipVelocity(float velocity)
     if (! audioEngine.setMidiClipVelocity(selectedMidiClip->first, selectedMidiClip->second, velocity))
     {
         showErrorMessage("Velocity edit failed", "The selected MIDI clip velocity could not be set.");
+        return;
+    }
+
+    timelineComponent.repaint();
+}
+
+void MainComponent::accentSelectedMidiClipVelocity()
+{
+    const auto selectedMidiClip = timelineComponent.getSelectedMidiClip();
+
+    if (! selectedMidiClip.has_value())
+    {
+        showErrorMessage("No MIDI clip selected", "Select a MIDI clip before adding velocity accents.");
+        return;
+    }
+
+    if (! audioEngine.accentMidiClipVelocity(selectedMidiClip->first, selectedMidiClip->second))
+    {
+        showErrorMessage("Accent failed", "The selected MIDI clip velocity could not be accented.");
         return;
     }
 
