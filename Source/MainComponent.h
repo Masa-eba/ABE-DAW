@@ -41,6 +41,7 @@ private:
     void updateTimelineSize();
     void undoProjectEdit();
     void redoProjectEdit();
+    void renameSelectedTrack();
     void loopSelectedClip();
     void importAudioToSelectedTrack();
     void nudgeSelectedClip(int direction);
@@ -83,6 +84,7 @@ private:
     juce::TextButton exportButton;
     juce::TextButton addAudioTrackButton;
     juce::TextButton addMidiTrackButton;
+    juce::TextButton renameTrackButton;
     juce::TextButton deleteTrackButton;
     juce::TextButton importAudioButton;
     juce::TextButton duplicateClipButton;

@@ -291,6 +291,33 @@ void AudioEngine::setTrackGain(const TrackId& trackId, float gain)
         midiTrack->state.gain = juce::jlimit(0.0f, 1.0f, gain);
 }
 
+bool AudioEngine::renameTrack(const TrackId& trackId, const juce::String& newName)
+{
+    auto cleanName = newName.trim();
+
+    if (cleanName.isEmpty())
+        return false;
+
+    cleanName = cleanName.substring(0, 48);
+
+    std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
+
+    if (auto* track = projectModel.findAudioTrack(trackId))
+    {
+        track->state.name = cleanName;
+        return true;
+    }
+
+    if (auto* track = projectModel.findMidiTrack(trackId))
+    {
+        track->state.name = cleanName;
+        return true;
+    }
+
+    return false;
+}
+
 void AudioEngine::setTrackMuted(const TrackId& trackId, bool muted)
 {
     std::scoped_lock lock(modelMutex);

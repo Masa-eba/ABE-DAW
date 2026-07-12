@@ -66,6 +66,10 @@ MainComponent::MainComponent()
     };
     addAndMakeVisible(addMidiTrackButton);
 
+    renameTrackButton.setButtonText("Rename");
+    renameTrackButton.onClick = [this] { renameSelectedTrack(); };
+    addAndMakeVisible(renameTrackButton);
+
     deleteTrackButton.setButtonText("Delete");
     deleteTrackButton.onClick = [this]
     {
@@ -405,6 +409,8 @@ void MainComponent::resized()
     trackBar.removeFromLeft(8);
     importAudioButton.setBounds(trackBar.removeFromLeft(112).reduced(0, 5));
     trackBar.removeFromLeft(8);
+    renameTrackButton.setBounds(trackBar.removeFromLeft(82).reduced(0, 5));
+    trackBar.removeFromLeft(8);
     deleteTrackButton.setBounds(trackBar.removeFromLeft(80).reduced(0, 5));
     trackBar.removeFromLeft(8);
     armButton.setBounds(trackBar.removeFromLeft(36).reduced(0, 5));
@@ -715,6 +721,53 @@ void MainComponent::redoProjectEdit()
     updateTimelineSize();
     updateTransportDisplay();
     timelineComponent.repaint();
+}
+
+void MainComponent::renameSelectedTrack()
+{
+    const auto selected = getSelectedTrack();
+    juce::String currentName;
+
+    if (const auto* audioTrack = audioEngine.getProjectModel().findAudioTrack(selected.id))
+        currentName = audioTrack->state.name;
+    else if (const auto* midiTrack = audioEngine.getProjectModel().findMidiTrack(selected.id))
+        currentName = midiTrack->state.name;
+
+    if (currentName.isEmpty())
+    {
+        showErrorMessage("No track selected", "Select a track before renaming.");
+        return;
+    }
+
+    auto* window = new juce::AlertWindow("Rename track",
+                                         "Enter a new track name.",
+                                         juce::AlertWindow::NoIcon);
+    window->addTextEditor("trackName", currentName, "Track name:");
+    window->addButton("Rename", 1, juce::KeyPress(juce::KeyPress::returnKey));
+    window->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    window->enterModalState(true,
+                            juce::ModalCallbackFunction::create([safeThis, selected, window](int result)
+                            {
+                                std::unique_ptr<juce::AlertWindow> ownedWindow(window);
+
+                                if (safeThis == nullptr || result != 1)
+                                    return;
+
+                                auto* component = safeThis.getComponent();
+                                const auto name = ownedWindow->getTextEditorContents("trackName");
+
+                                if (! component->audioEngine.renameTrack(selected.id, name))
+                                {
+                                    component->showErrorMessage("Rename failed", "The selected track could not be renamed.");
+                                    return;
+                                }
+
+                                component->refreshTrackSelector();
+                                component->timelineComponent.repaint();
+                            }),
+                            false);
 }
 
 void MainComponent::loopSelectedClip()
