@@ -92,6 +92,37 @@ MainComponent::MainComponent()
     };
     addAndMakeVisible(addMidiTrackButton);
 
+    instrumentSelector.addItem("Lead", 1);
+    instrumentSelector.addItem("Bass", 2);
+    instrumentSelector.addItem("Guitar", 3);
+    instrumentSelector.addItem("Drum", 4);
+    instrumentSelector.setTextWhenNothingSelected("Instrument");
+    instrumentSelector.onChange = [this]
+    {
+        const auto selected = getSelectedTrack();
+
+        if (selected.type != TrackType::Midi)
+            return;
+
+        switch (instrumentSelector.getSelectedId())
+        {
+            case 2:
+                setSelectedMidiTrackInstrument(MidiInstrument::Bass);
+                break;
+            case 3:
+                setSelectedMidiTrackInstrument(MidiInstrument::Guitar);
+                break;
+            case 4:
+                setSelectedMidiTrackInstrument(MidiInstrument::Drum);
+                break;
+            case 1:
+            default:
+                setSelectedMidiTrackInstrument(MidiInstrument::Lead);
+                break;
+        }
+    };
+    addAndMakeVisible(instrumentSelector);
+
     renameTrackButton.setButtonText("Rename");
     renameTrackButton.onClick = [this] { renameSelectedTrack(); };
     addAndMakeVisible(renameTrackButton);
@@ -406,6 +437,10 @@ MainComponent::MainComponent()
         timelineComponent.repaint();
         updateTransportDisplay();
     };
+    timelineComponent.onMidiClipDoubleClicked = [this](const TrackId& trackId, const juce::Uuid& clipId)
+    {
+        openPianoRollForMidiClip(trackId, clipId);
+    };
     timelineComponent.onAudioFileDropped = [this](const TrackId& trackId,
                                                   const juce::File& file,
                                                   double startTimeSeconds)
@@ -507,6 +542,8 @@ void MainComponent::resized()
     auto trackBar = area.removeFromTop(44);
     trackLabel.setBounds(trackBar.removeFromLeft(48));
     trackSelector.setBounds(trackBar.removeFromLeft(180).reduced(0, 5));
+    trackBar.removeFromLeft(8);
+    instrumentSelector.setBounds(trackBar.removeFromLeft(112).reduced(0, 5));
     trackBar.removeFromLeft(8);
     importAudioButton.setBounds(trackBar.removeFromLeft(112).reduced(0, 5));
     trackBar.removeFromLeft(8);
@@ -1429,6 +1466,10 @@ void MainComponent::updateSelectedTrackControls()
         soloButton.setToggleState(track->state.solo, juce::dontSendNotification);
         trackVolumeSlider.setValue(track->state.gain, juce::dontSendNotification);
         trackPanSlider.setValue(track->state.pan, juce::dontSendNotification);
+        instrumentSelector.setSelectedId(0, juce::dontSendNotification);
+        instrumentSelector.setTextWhenNothingSelected("Audio");
+        instrumentSelector.setEnabled(false);
+        keyboardComponent.setMidiChannel(1);
         importAudioButton.setEnabled(true);
         return;
     }
@@ -1440,6 +1481,10 @@ void MainComponent::updateSelectedTrackControls()
         soloButton.setToggleState(track->state.solo, juce::dontSendNotification);
         trackVolumeSlider.setValue(track->state.gain, juce::dontSendNotification);
         trackPanSlider.setValue(track->state.pan, juce::dontSendNotification);
+        instrumentSelector.setTextWhenNothingSelected("Instrument");
+        instrumentSelector.setEnabled(true);
+        instrumentSelector.setSelectedId(static_cast<int>(track->instrument) + 1, juce::dontSendNotification);
+        keyboardComponent.setMidiChannel(midiInstrumentToChannel(track->instrument));
         importAudioButton.setEnabled(false);
     }
 }
@@ -2071,6 +2116,53 @@ void MainComponent::resetSelectedTrackMix()
     audioEngine.setTrackPan(selected.id, 0.0f);
     updateSelectedTrackControls();
     timelineComponent.repaint();
+}
+
+void MainComponent::setSelectedMidiTrackInstrument(MidiInstrument instrument)
+{
+    const auto selected = getSelectedTrack();
+
+    if (selected.type != TrackType::Midi)
+        return;
+
+    audioEngine.setMidiTrackInstrument(selected.id, instrument);
+    keyboardComponent.setMidiChannel(midiInstrumentToChannel(instrument));
+    timelineComponent.repaint();
+}
+
+void MainComponent::openPianoRollForMidiClip(const TrackId& trackId, const juce::Uuid& clipId)
+{
+    const auto* track = audioEngine.getProjectModel().findMidiTrack(trackId);
+
+    if (track == nullptr)
+        return;
+
+    auto title = juce::String("Piano Roll - ") + track->state.name;
+    auto options = juce::DialogWindow::LaunchOptions();
+    auto* editor = new PianoRollComponent(audioEngine, trackId, clipId);
+    editor->onEdited = [safeThis = juce::Component::SafePointer<MainComponent>(this)]
+    {
+        if (safeThis == nullptr)
+            return;
+
+        auto* component = safeThis.getComponent();
+        component->updateTimelineSize();
+        component->updateTransportDisplay();
+        component->timelineComponent.repaint();
+    };
+
+    options.content.setOwned(editor);
+    options.dialogTitle = title;
+    options.dialogBackgroundColour = juce::Colour(0xff1e1f22);
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar = true;
+    options.resizable = true;
+
+    if (auto* window = options.launchAsync())
+    {
+        window->centreWithSize(960, 520);
+        window->setResizeLimits(640, 360, 1600, 1000);
+    }
 }
 
 void MainComponent::loopSelectedClip()

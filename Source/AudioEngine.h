@@ -76,6 +76,7 @@ public:
 
     void setTrackGain(const TrackId& trackId, float gain);
     void setTrackPan(const TrackId& trackId, float pan);
+    void setMidiTrackInstrument(const TrackId& trackId, MidiInstrument instrument);
     bool renameTrack(const TrackId& trackId, const juce::String& newName);
     void setTrackMuted(const TrackId& trackId, bool muted);
     void setTrackSolo(const TrackId& trackId, bool solo);
@@ -158,6 +159,10 @@ public:
     bool scaleMidiClipTiming(const TrackId& trackId, const juce::Uuid& clipId, double scaleFactor);
     bool reverseMidiClip(const TrackId& trackId, const juce::Uuid& clipId);
     bool toggleMidiClipMuted(const TrackId& trackId, const juce::Uuid& clipId);
+    bool replaceMidiClipSequence(const TrackId& trackId,
+                                 const juce::Uuid& clipId,
+                                 const juce::MidiMessageSequence& sequence,
+                                 double lengthBeats);
     bool generateChordProgression(const TrackId& trackId, const juce::String& style);
     bool generateBassline(const TrackId& trackId, const juce::String& style);
     bool generateArpeggio(const TrackId& trackId, const juce::String& style);

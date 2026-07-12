@@ -2,6 +2,7 @@
 
 #include "AudioEngine.h"
 #include "Midi/MidiInputManager.h"
+#include "UI/PianoRollComponent.h"
 #include "UI/TimelineComponent.h"
 
 #include <JuceHeader.h>
@@ -72,6 +73,8 @@ private:
     void toggleSelectedTrackSolo();
     void soloOnlySelectedTrack();
     void resetSelectedTrackMix();
+    void setSelectedMidiTrackInstrument(MidiInstrument instrument);
+    void openPianoRollForMidiClip(const TrackId& trackId, const juce::Uuid& clipId);
     void moveSelectedTrack(int direction);
     void selectAdjacentTrack(int direction);
     void fitProjectToView();
@@ -210,6 +213,7 @@ private:
     juce::Slider trackVolumeSlider;
     juce::Slider trackPanSlider;
     juce::ComboBox trackSelector;
+    juce::ComboBox instrumentSelector;
     juce::ComboBox midiInputSelector;
     std::unique_ptr<juce::FileChooser> fileChooser;
     juce::File currentProjectFile;

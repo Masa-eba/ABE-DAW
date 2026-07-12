@@ -44,6 +44,7 @@ public:
     std::function<void(const TrackId&, const juce::Uuid&, double)> onMidiClipMoved;
     std::function<void(const TrackId&, const juce::Uuid&, double)> onMidiClipTrimmed;
     std::function<void(const TrackId&, const TrackId&, const juce::Uuid&, double)> onMidiClipMovedToTrack;
+    std::function<void(const TrackId&, const juce::Uuid&)> onMidiClipDoubleClicked;
     std::function<void(const TrackId&, const juce::File&, double)> onAudioFileDropped;
 
 private:

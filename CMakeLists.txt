@@ -38,7 +38,8 @@ target_sources(MiniDAW
         Source/Midi/MidiTrack.cpp
         Source/Midi/MidiInputManager.cpp
         Source/Midi/SimpleSynth.cpp
-        Source/UI/TimelineComponent.cpp)
+        Source/UI/TimelineComponent.cpp
+        Source/UI/PianoRollComponent.cpp)
 
 target_include_directories(MiniDAW
     PRIVATE

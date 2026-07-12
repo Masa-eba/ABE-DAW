@@ -431,6 +431,15 @@ void AudioEngine::setTrackPan(const TrackId& trackId, float pan)
         midiTrack->state.pan = juce::jlimit(-1.0f, 1.0f, pan);
 }
 
+void AudioEngine::setMidiTrackInstrument(const TrackId& trackId, MidiInstrument instrument)
+{
+    std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
+
+    if (auto* track = projectModel.findMidiTrack(trackId))
+        track->instrument = instrument;
+}
+
 bool AudioEngine::renameTrack(const TrackId& trackId, const juce::String& newName)
 {
     auto cleanName = newName.trim();
@@ -2143,6 +2152,31 @@ bool AudioEngine::toggleMidiClipMuted(const TrackId& trackId, const juce::Uuid& 
     return false;
 }
 
+bool AudioEngine::replaceMidiClipSequence(const TrackId& trackId,
+                                          const juce::Uuid& clipId,
+                                          const juce::MidiMessageSequence& sequence,
+                                          double lengthBeats)
+{
+    if (! std::isfinite(lengthBeats) || lengthBeats <= 0.0)
+        return false;
+
+    std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
+
+    if (auto* track = projectModel.findMidiTrack(trackId))
+        for (auto& clip : track->clips)
+            if (clip.id == clipId)
+            {
+                clip.sequence = sequence;
+                clip.sequence.sort();
+                clip.sequence.updateMatchedPairs();
+                clip.lengthBeats = juce::jlimit(0.25, 1024.0, lengthBeats);
+                return true;
+            }
+
+    return false;
+}
+
 bool AudioEngine::generateChordProgression(const TrackId& trackId, const juce::String& style)
 {
     std::scoped_lock lock(modelMutex);
@@ -2150,6 +2184,7 @@ bool AudioEngine::generateChordProgression(const TrackId& trackId, const juce::S
 
     if (auto* track = projectModel.findMidiTrack(trackId))
     {
+        track->instrument = MidiInstrument::Lead;
         track->clips.push_back(createChordProgressionClip(style));
         return true;
     }
@@ -2164,6 +2199,7 @@ bool AudioEngine::generateBassline(const TrackId& trackId, const juce::String& s
 
     if (auto* track = projectModel.findMidiTrack(trackId))
     {
+        track->instrument = MidiInstrument::Bass;
         track->clips.push_back(createBasslineClip(style));
         return true;
     }
@@ -2178,6 +2214,7 @@ bool AudioEngine::generateArpeggio(const TrackId& trackId, const juce::String& s
 
     if (auto* track = projectModel.findMidiTrack(trackId))
     {
+        track->instrument = MidiInstrument::Guitar;
         track->clips.push_back(createArpeggioClip(style));
         return true;
     }
@@ -2192,6 +2229,7 @@ bool AudioEngine::generateGuitarPart(const TrackId& trackId, const juce::String&
 
     if (auto* track = projectModel.findMidiTrack(trackId))
     {
+        track->instrument = MidiInstrument::Guitar;
         track->clips.push_back(createGuitarPartClip(style));
         return true;
     }
@@ -2206,6 +2244,7 @@ bool AudioEngine::generateDrumPattern(const TrackId& trackId, const juce::String
 
     if (auto* track = projectModel.findMidiTrack(trackId))
     {
+        track->instrument = MidiInstrument::Drum;
         track->clips.push_back(createDrumPatternClip(style));
         return true;
     }
@@ -2220,6 +2259,7 @@ bool AudioEngine::generateDrumFill(const TrackId& trackId, const juce::String& s
 
     if (auto* track = projectModel.findMidiTrack(trackId))
     {
+        track->instrument = MidiInstrument::Drum;
         track->clips.push_back(createDrumFillClip(style));
         return true;
     }
@@ -2234,6 +2274,7 @@ bool AudioEngine::generateMelody(const TrackId& trackId, const juce::String& sty
 
     if (auto* track = projectModel.findMidiTrack(trackId))
     {
+        track->instrument = MidiInstrument::Lead;
         track->clips.push_back(createMelodyClip(style));
         return true;
     }
@@ -2269,15 +2310,19 @@ bool AudioEngine::generateDemoSong()
     drums->state.name = "Demo Drums";
     drums->state.gain = 0.78f;
     drums->state.pan = 0.0f;
+    drums->instrument = MidiInstrument::Drum;
     bass->state.name = "Demo Bass";
     bass->state.gain = 0.72f;
     bass->state.pan = -0.05f;
+    bass->instrument = MidiInstrument::Bass;
     guitar->state.name = "Demo Guitar";
     guitar->state.gain = 0.58f;
     guitar->state.pan = 0.18f;
+    guitar->instrument = MidiInstrument::Guitar;
     melody->state.name = "Demo Melody";
     melody->state.gain = 0.68f;
     melody->state.pan = 0.04f;
+    melody->instrument = MidiInstrument::Lead;
 
     constexpr auto bars = 28;
     constexpr auto beatsPerBar = 4.0;
@@ -2928,6 +2973,8 @@ void AudioEngine::renderMidiTracks(juce::AudioBuffer<float>& buffer,
         if (! shouldRenderTrack(track.state, anySolo))
             continue;
 
+        const auto renderChannel = midiInstrumentToChannel(track.instrument);
+
         for (const auto& clip : track.clips)
         {
             if (clip.muted)
@@ -2954,9 +3001,22 @@ void AudioEngine::renderMidiTracks(juce::AudioBuffer<float>& buffer,
                     auto message = event->message;
 
                     if (message.isNoteOn())
+                    {
+                        message = juce::MidiMessage::noteOn(renderChannel,
+                                                            message.getNoteNumber(),
+                                                            juce::jlimit(0.0f,
+                                                                         1.0f,
+                                                                         message.getFloatVelocity() * track.state.gain));
+                    }
+                    else if (message.isNoteOff())
+                    {
+                        message = juce::MidiMessage::noteOff(renderChannel, message.getNoteNumber());
+                    }
+
+                    if (message.isNoteOn())
                         message.setVelocity(juce::jlimit(0.0f,
                                                          1.0f,
-                                                         message.getFloatVelocity() * track.state.gain));
+                                                         message.getFloatVelocity()));
 
                     midiMessages.addEvent(message, offset);
                 }

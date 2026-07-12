@@ -642,6 +642,18 @@ void TimelineComponent::mouseDown(const juce::MouseEvent& event)
 
     if (auto hit = findMidiClipAt(event.position))
     {
+        selectedMidiClip = std::make_pair(hit->trackId, hit->clipId);
+        selectedAudioClip.reset();
+
+        if (event.getNumberOfClicks() >= 2)
+        {
+            if (onMidiClipDoubleClicked)
+                onMidiClipDoubleClicked(hit->trackId, hit->clipId);
+
+            repaint();
+            return;
+        }
+
         const auto rightDistance = std::abs(event.position.x - hit->bounds.getRight());
         trimmingMidiClip = rightDistance <= trimHandleWidth;
         draggingMidiClip = ! trimmingMidiClip;
@@ -656,8 +668,6 @@ void TimelineComponent::mouseDown(const juce::MouseEvent& event)
         dragPreviewStartBeats = hit->startBeat;
         dragPreviewLengthBeats = hit->lengthBeats;
         dragPreviewMidiName = hit->name;
-        selectedMidiClip = std::make_pair(hit->trackId, hit->clipId);
-        selectedAudioClip.reset();
         setMouseCursor(trimmingMidiClip ? juce::MouseCursor::LeftRightResizeCursor
                                         : juce::MouseCursor::DraggingHandCursor);
         repaint();

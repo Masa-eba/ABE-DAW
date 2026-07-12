@@ -49,6 +49,7 @@ TrackId ProjectModel::duplicateTrack(const TrackId& trackId)
         duplicate->state.muted = source->state.muted;
         duplicate->state.solo = false;
         duplicate->state.armed = false;
+        duplicate->instrument = source->instrument;
         duplicate->clips = source->clips;
 
         for (auto& clip : duplicate->clips)
@@ -280,7 +281,7 @@ juce::String ProjectModel::toJsonString() const
 juce::String ProjectModel::toJsonString(const juce::File& projectDirectory) const
 {
     auto root = std::make_unique<juce::DynamicObject>();
-    root->setProperty("version", 2);
+    root->setProperty("version", 3);
     root->setProperty("bpm", tempoMap.getBpm());
 
     juce::Array<juce::var> markerArray;
@@ -344,6 +345,7 @@ juce::String ProjectModel::toJsonString(const juce::File& projectDirectory) cons
         object->setProperty("muted", track->state.muted);
         object->setProperty("solo", track->state.solo);
         object->setProperty("armed", track->state.armed);
+        object->setProperty("instrument", midiInstrumentToString(track->instrument));
 
         juce::Array<juce::var> clips;
         for (const auto& clip : track->clips)
@@ -469,6 +471,7 @@ bool ProjectModel::loadFromJsonString(const juce::String& json, const juce::File
                 track->state.muted = static_cast<bool>(item.getProperty("muted", false));
                 track->state.solo = static_cast<bool>(item.getProperty("solo", false));
                 track->state.armed = static_cast<bool>(item.getProperty("armed", false));
+                track->instrument = midiInstrumentFromString(item.getProperty("instrument", "Lead").toString());
 
                 if (auto* clips = item.getProperty("clips", {}).getArray())
                 {
