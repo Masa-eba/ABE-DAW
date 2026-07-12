@@ -79,6 +79,7 @@ private:
     void splitSelectedClip();
     void fadeInSelectedClip();
     void fadeOutSelectedClip();
+    void adjustSelectedAudioClipFade(bool fadeIn, double deltaSeconds);
     void clearSelectedAudioClipFades();
     void quantizeSelectedMidiClip();
     void swingQuantizeSelectedMidiClip();

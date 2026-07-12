@@ -216,6 +216,8 @@ open build/MiniDAW_artefacts/AI-DAW.app
 - `Command + Shift + M`: 選択中AudioClip / MidiClipのMute切替
 - `Command + E`: 選択中AudioClip / MidiClipを再生位置でSplit
 - `Command + Option + F`: 選択中AudioClipのFade In / Outをクリア
+- `Command + Option + I / O`: 選択中AudioClipのFade In / Outを0.25秒増やす
+- `Command + Option + Shift + I / O`: 選択中AudioClipのFade In / Outを0.25秒減らす
 - `Command + = / -`: 選択中AudioClipのClip Gainを上下
 - `Command + Shift + N`: 選択中AudioClipのClip Gainをピーク基準でNormalize
 - `Command + Shift + R`: 選択中AudioClipのReverse切替

@@ -696,6 +696,22 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
     }
 
     if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isAltDown()
+        && key.getKeyCode() == 'i')
+    {
+        adjustSelectedAudioClipFade(true, key.getModifiers().isShiftDown() ? -0.25 : 0.25);
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isAltDown()
+        && key.getKeyCode() == 'o')
+    {
+        adjustSelectedAudioClipFade(false, key.getModifiers().isShiftDown() ? -0.25 : 0.25);
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown()
         && key.getModifiers().isShiftDown()
         && key.getKeyCode() == 'a')
     {
@@ -2148,6 +2164,44 @@ void MainComponent::fadeOutSelectedClip()
 
     if (! audioEngine.setAudioClipFade(selectedClip->first, selectedClip->second, fadeInSeconds, 1.0))
         showErrorMessage("Fade failed", "The selected audio clip could not be faded.");
+
+    timelineComponent.repaint();
+}
+
+void MainComponent::adjustSelectedAudioClipFade(bool fadeIn, double deltaSeconds)
+{
+    const auto selectedClip = timelineComponent.getSelectedAudioClip();
+
+    if (! selectedClip.has_value())
+    {
+        showErrorMessage("No clip selected", "Select an audio clip before adjusting fades.");
+        return;
+    }
+
+    auto fadeInSeconds = 0.0;
+    auto fadeOutSeconds = 0.0;
+
+    if (const auto* track = audioEngine.getProjectModel().findAudioTrack(selectedClip->first))
+        for (const auto& clip : track->clips)
+            if (clip.id == selectedClip->second)
+            {
+                fadeInSeconds = clip.fadeInSeconds;
+                fadeOutSeconds = clip.fadeOutSeconds;
+            }
+
+    if (fadeIn)
+        fadeInSeconds = juce::jmax(0.0, fadeInSeconds + deltaSeconds);
+    else
+        fadeOutSeconds = juce::jmax(0.0, fadeOutSeconds + deltaSeconds);
+
+    if (! audioEngine.setAudioClipFade(selectedClip->first,
+                                       selectedClip->second,
+                                       fadeInSeconds,
+                                       fadeOutSeconds))
+    {
+        showErrorMessage("Fade failed", "The selected audio clip fade could not be adjusted.");
+        return;
+    }
 
     timelineComponent.repaint();
 }
