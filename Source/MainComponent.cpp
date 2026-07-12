@@ -1025,6 +1025,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    if (key.getModifiers().isAltDown()
+        && key.getModifiers().isShiftDown()
+        && key.getKeyCode() == '0')
+    {
+        resetMasterVolume();
+        return true;
+    }
+
     if (key.getModifiers().isAltDown() && key.getKeyCode() == '0')
     {
         resetSelectedTrackMix();
@@ -1398,6 +1406,11 @@ void MainComponent::adjustMetronomeGain(float delta)
     const auto gain = juce::jlimit(0.0f, 1.0f, audioEngine.getMetronomeGain() + delta);
     audioEngine.setMetronomeGain(gain);
     metronomeButton.setButtonText("Metro " + juce::String(static_cast<int>(std::round(gain * 100.0f))) + "%");
+}
+
+void MainComponent::resetMasterVolume()
+{
+    masterVolumeSlider.setValue(0.8, juce::sendNotificationSync);
 }
 
 void MainComponent::cycleSnapGrid(int direction)

@@ -60,6 +60,7 @@ private:
     void selectAdjacentTrack(int direction);
     void fitProjectToView();
     void adjustMetronomeGain(float delta);
+    void resetMasterVolume();
     void cycleSnapGrid(int direction);
     void updateSnapButtonText();
     void addMarkerAtPlayhead();

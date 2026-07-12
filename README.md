@@ -211,6 +211,7 @@ open build/MiniDAW_artefacts/AI-DAW.app
 - `Option + Shift + R`: 選択中トラックだけをRecord Armにする
 - `Option + Shift + S`: 選択中トラックだけをSoloにする
 - `Option + 0`: 選択中トラックのVolume / Panを基準値へ戻す
+- `Option + Shift + 0`: Master Volumeを基準値へ戻す
 - `Option + F`: プロジェクト全体が見えるようにTimeline Zoomを調整
 - `Option + = / -`: メトロノーム音量を上下
 - `Option + [ / ]`: スナップグリッドを4分、8分、16分、32分で切り替え
