@@ -128,6 +128,7 @@ public:
     bool saveProject(const juce::File& file);
     bool loadProject(const juce::File& file);
     bool exportToWav(const juce::File& destinationFile);
+    bool exportTrackToWav(const TrackId& trackId, const juce::File& destinationFile);
     bool undo();
     bool redo();
     void setMonoMonitoringEnabled(bool enabled);
@@ -151,12 +152,14 @@ private:
                         bool includeMetronome);
     void renderAudioTracks(juce::AudioBuffer<float>& buffer,
                            int numSamples,
-                           double blockStartSeconds) const;
+                           double blockStartSeconds,
+                           const TrackId* onlyTrackId = nullptr) const;
     void renderMidiTracks(juce::AudioBuffer<float>& buffer,
                           int numSamples,
                           double blockStartSeconds,
                           juce::MidiBuffer& midiBuffer,
-                          SimpleSynth& synthToUse) const;
+                          SimpleSynth& synthToUse,
+                          const TrackId* onlyTrackId = nullptr) const;
     void applyMonoMonitoring(juce::AudioBuffer<float>& buffer) const;
     bool anySoloedTrack() const;
     bool shouldRenderTrack(const TrackState& state, bool anySolo) const;

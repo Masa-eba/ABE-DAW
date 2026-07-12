@@ -81,6 +81,7 @@ private:
     void legatoSelectedMidiClip();
     void generateAiChordsForSelectedTrack();
     void exportMix();
+    void exportSelectedTrack();
     void saveProject();
     void openProject();
     void showErrorMessage(const juce::String& title, const juce::String& message);
@@ -111,6 +112,7 @@ private:
     juce::TextButton openProjectButton;
     juce::TextButton saveProjectButton;
     juce::TextButton exportButton;
+    juce::TextButton exportTrackButton;
     juce::TextButton addAudioTrackButton;
     juce::TextButton addMidiTrackButton;
     juce::TextButton renameTrackButton;

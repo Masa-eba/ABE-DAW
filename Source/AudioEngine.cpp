@@ -1552,6 +1552,93 @@ bool AudioEngine::exportToWav(const juce::File& destinationFile)
     return true;
 }
 
+bool AudioEngine::exportTrackToWav(const TrackId& trackId, const juce::File& destinationFile)
+{
+    {
+        std::scoped_lock lock(modelMutex);
+
+        if (projectModel.findAudioTrack(trackId) == nullptr
+            && projectModel.findMidiTrack(trackId) == nullptr)
+        {
+            return false;
+        }
+    }
+
+    auto destination = destinationFile.hasFileExtension(".wav")
+        ? destinationFile
+        : destinationFile.withFileExtension(".wav");
+
+    if (destination.existsAsFile() && ! destination.deleteFile())
+        return false;
+
+    std::unique_ptr<juce::OutputStream> outputStream = destination.createOutputStream();
+
+    if (outputStream == nullptr)
+        return false;
+
+    constexpr double outputSampleRate = 44100.0;
+    constexpr int outputChannels = 2;
+    constexpr int bitsPerSample = 16;
+    constexpr int blockSize = 8192;
+    const auto lengthSeconds = getLength();
+    const auto totalSamples = static_cast<int>(std::ceil(lengthSeconds * outputSampleRate));
+
+    if (totalSamples <= 0)
+        return false;
+
+    juce::WavAudioFormat wavFormat;
+    auto writerOptions = juce::AudioFormatWriterOptions()
+                             .withSampleRate(outputSampleRate)
+                             .withNumChannels(outputChannels)
+                             .withBitsPerSample(bitsPerSample);
+    auto writer = wavFormat.createWriterFor(outputStream, writerOptions);
+
+    if (writer == nullptr)
+        return false;
+
+    SimpleSynth exportSynth;
+    exportSynth.setCurrentPlaybackSampleRate(outputSampleRate);
+    juce::AudioBuffer<float> buffer(outputChannels, blockSize);
+    juce::MidiBuffer exportMidi;
+
+    for (auto rendered = 0; rendered < totalSamples;)
+    {
+        const auto numToRender = juce::jmin(blockSize, totalSamples - rendered);
+        buffer.setSize(outputChannels, numToRender, false, false, true);
+        buffer.clear();
+        exportMidi.clear();
+
+        {
+            std::scoped_lock lock(modelMutex);
+            renderAudioTracks(buffer,
+                              numToRender,
+                              static_cast<double>(rendered) / outputSampleRate,
+                              &trackId);
+            renderMidiTracks(buffer,
+                             numToRender,
+                             static_cast<double>(rendered) / outputSampleRate,
+                             exportMidi,
+                             exportSynth,
+                             &trackId);
+        }
+
+        buffer.applyGain(masterGain.load());
+        applyMonoMonitoring(buffer);
+
+        for (auto channel = 0; channel < buffer.getNumChannels(); ++channel)
+            for (auto sample = 0; sample < buffer.getNumSamples(); ++sample)
+                buffer.setSample(channel, sample, juce::jlimit(-1.0f, 1.0f, buffer.getSample(channel, sample)));
+
+        if (! writer->writeFromAudioSampleBuffer(buffer, 0, numToRender))
+            return false;
+
+        rendered += numToRender;
+    }
+
+    writer->flush();
+    return true;
+}
+
 bool AudioEngine::undo()
 {
     std::scoped_lock lock(modelMutex);
@@ -1757,14 +1844,18 @@ void AudioEngine::renderToBuffer(juce::AudioBuffer<float>& buffer,
 
 void AudioEngine::renderAudioTracks(juce::AudioBuffer<float>& buffer,
                                     int numSamples,
-                                    double blockStartSeconds) const
+                                    double blockStartSeconds,
+                                    const TrackId* onlyTrackId) const
 {
-    const auto anySolo = anySoloedTrack();
+    const auto anySolo = onlyTrackId == nullptr ? anySoloedTrack() : false;
     const auto outputSampleRate = currentSampleRate.load();
 
     for (const auto& trackPtr : projectModel.getAudioTracks())
     {
         const auto& track = *trackPtr;
+
+        if (onlyTrackId != nullptr && track.state.id != *onlyTrackId)
+            continue;
 
         if (! track.hasAudio() || ! shouldRenderTrack(track.state, anySolo))
             continue;
@@ -1826,15 +1917,19 @@ void AudioEngine::renderMidiTracks(juce::AudioBuffer<float>& buffer,
                                    int numSamples,
                                    double blockStartSeconds,
                                    juce::MidiBuffer& midiMessages,
-                                   SimpleSynth& synthToUse) const
+                                   SimpleSynth& synthToUse,
+                                   const TrackId* onlyTrackId) const
 {
-    const auto anySolo = anySoloedTrack();
+    const auto anySolo = onlyTrackId == nullptr ? anySoloedTrack() : false;
     const auto sampleRate = currentSampleRate.load();
     const auto& tempo = projectModel.getTempoMap();
 
     for (const auto& trackPtr : projectModel.getMidiTracks())
     {
         const auto& track = *trackPtr;
+
+        if (onlyTrackId != nullptr && track.state.id != *onlyTrackId)
+            continue;
 
         if (! shouldRenderTrack(track.state, anySolo))
             continue;

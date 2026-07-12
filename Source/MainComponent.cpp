@@ -66,6 +66,10 @@ MainComponent::MainComponent()
     exportButton.onClick = [this] { exportMix(); };
     addAndMakeVisible(exportButton);
 
+    exportTrackButton.setButtonText("Export Track");
+    exportTrackButton.onClick = [this] { exportSelectedTrack(); };
+    addAndMakeVisible(exportTrackButton);
+
     addAudioTrackButton.setButtonText("+ Audio Track");
     addAudioTrackButton.onClick = [this]
     {
@@ -455,6 +459,8 @@ void MainComponent::resized()
     saveProjectButton.setBounds(projectBar.removeFromLeft(78).reduced(0, 3));
     projectBar.removeFromLeft(8);
     exportButton.setBounds(projectBar.removeFromLeft(110).reduced(0, 3));
+    projectBar.removeFromLeft(8);
+    exportTrackButton.setBounds(projectBar.removeFromLeft(118).reduced(0, 3));
     projectBar.removeFromLeft(16);
     addAudioTrackButton.setBounds(projectBar.removeFromLeft(130).reduced(0, 3));
     projectBar.removeFromLeft(8);
@@ -2003,6 +2009,61 @@ void MainComponent::exportMix()
             component->showInfoMessage("Export complete", "The mix was exported successfully.");
         else
             component->showErrorMessage("Export failed", "The mix could not be exported.");
+    });
+}
+
+void MainComponent::exportSelectedTrack()
+{
+    const auto selected = getSelectedTrack();
+
+    if (selected.id.isNull())
+    {
+        showErrorMessage("Export failed", "Select a track before exporting a stem.");
+        return;
+    }
+
+    auto selectedName = juce::String("Selected Track");
+
+    if (selected.type == TrackType::Audio)
+    {
+        if (const auto* track = audioEngine.getProjectModel().findAudioTrack(selected.id))
+            selectedName = track->state.name;
+    }
+    else if (const auto* track = audioEngine.getProjectModel().findMidiTrack(selected.id))
+    {
+        selectedName = track->state.name;
+    }
+
+    const auto suggestedName = selectedName + " Stem.wav";
+    fileChooser = std::make_unique<juce::FileChooser>("Export selected track",
+                                                       juce::File::getSpecialLocation(juce::File::userDocumentsDirectory)
+                                                           .getChildFile(suggestedName),
+                                                       "*.wav");
+    const auto flags = juce::FileBrowserComponent::saveMode
+                     | juce::FileBrowserComponent::canSelectFiles
+                     | juce::FileBrowserComponent::warnAboutOverwriting;
+    juce::Component::SafePointer<MainComponent> safeThis(this);
+    const auto trackId = selected.id;
+
+    fileChooser->launchAsync(flags, [safeThis, trackId](const juce::FileChooser& chooser)
+    {
+        if (safeThis == nullptr)
+            return;
+
+        auto destination = chooser.getResult();
+
+        if (destination == juce::File{})
+            return;
+
+        if (! destination.hasFileExtension(".wav"))
+            destination = destination.withFileExtension(".wav");
+
+        auto* component = safeThis.getComponent();
+
+        if (component->audioEngine.exportTrackToWav(trackId, destination))
+            component->showInfoMessage("Export complete", "The selected track was exported successfully.");
+        else
+            component->showErrorMessage("Export failed", "The selected track could not be exported.");
     });
 }
 
