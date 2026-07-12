@@ -102,6 +102,7 @@ public:
                           double fadeOutSeconds);
     bool clearAudioClipFades(const TrackId& trackId, const juce::Uuid& clipId);
     bool adjustAudioClipGain(const TrackId& trackId, const juce::Uuid& clipId, float delta);
+    bool setAudioClipGain(const TrackId& trackId, const juce::Uuid& clipId, float gain);
     bool normalizeAudioClipGain(const TrackId& trackId, const juce::Uuid& clipId);
     bool toggleAudioClipMuted(const TrackId& trackId, const juce::Uuid& clipId);
     bool toggleAudioClipReversed(const TrackId& trackId, const juce::Uuid& clipId);

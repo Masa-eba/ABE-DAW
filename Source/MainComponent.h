@@ -70,6 +70,7 @@ private:
     void movePlayheadToSelectedClipBoundary(bool endBoundary);
     void moveSelectedClipToPlayhead();
     void adjustSelectedAudioClipGain(float delta);
+    void resetSelectedAudioClipGain();
     void normalizeSelectedAudioClip();
     void toggleSelectedAudioClipReverse();
     void duplicateSelectedClip();

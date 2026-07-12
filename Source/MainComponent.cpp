@@ -911,6 +911,12 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    if (key.getModifiers().isCommandDown() && key.getKeyCode() == '0')
+    {
+        resetSelectedAudioClipGain();
+        return true;
+    }
+
     if (key.getModifiers().isAltDown() && key.getKeyCode() == juce::KeyPress::leftKey)
     {
         movePlayheadByGrid(-1, key.getModifiers().isShiftDown());
@@ -1907,6 +1913,25 @@ void MainComponent::adjustSelectedAudioClipGain(float delta)
     if (! audioEngine.adjustAudioClipGain(selectedAudioClip->first, selectedAudioClip->second, delta))
     {
         showErrorMessage("Clip gain failed", "The selected audio clip gain could not be changed.");
+        return;
+    }
+
+    timelineComponent.repaint();
+}
+
+void MainComponent::resetSelectedAudioClipGain()
+{
+    const auto selectedAudioClip = timelineComponent.getSelectedAudioClip();
+
+    if (! selectedAudioClip.has_value())
+    {
+        showErrorMessage("No audio clip selected", "Select an audio clip before resetting clip gain.");
+        return;
+    }
+
+    if (! audioEngine.setAudioClipGain(selectedAudioClip->first, selectedAudioClip->second, 1.0f))
+    {
+        showErrorMessage("Clip gain failed", "The selected audio clip gain could not be reset.");
         return;
     }
 

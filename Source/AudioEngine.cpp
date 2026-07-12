@@ -795,6 +795,25 @@ bool AudioEngine::adjustAudioClipGain(const TrackId& trackId, const juce::Uuid& 
     return false;
 }
 
+bool AudioEngine::setAudioClipGain(const TrackId& trackId, const juce::Uuid& clipId, float gain)
+{
+    if (! std::isfinite(gain))
+        return false;
+
+    std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
+
+    if (auto* track = projectModel.findAudioTrack(trackId))
+        for (auto& clip : track->clips)
+            if (clip.id == clipId)
+            {
+                clip.gain = juce::jlimit(0.0f, 2.0f, gain);
+                return true;
+            }
+
+    return false;
+}
+
 bool AudioEngine::normalizeAudioClipGain(const TrackId& trackId, const juce::Uuid& clipId)
 {
     std::scoped_lock lock(modelMutex);
