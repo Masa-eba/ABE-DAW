@@ -34,6 +34,10 @@ MainComponent::MainComponent()
     peakLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible(peakLabel);
 
+    resetPeakButton.setButtonText("Reset Peak");
+    resetPeakButton.onClick = [this] { audioEngine.resetHeldOutputPeak(); };
+    addAndMakeVisible(resetPeakButton);
+
     midiInputLabel.setText("MIDI Input", juce::dontSendNotification);
     midiInputLabel.setColour(juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible(midiInputLabel);
@@ -536,6 +540,8 @@ void MainComponent::resized()
     midiBar.removeFromLeft(16);
     peakLabel.setBounds(midiBar.removeFromLeft(110));
     midiBar.removeFromLeft(16);
+    resetPeakButton.setBounds(midiBar.removeFromLeft(90).reduced(0, 5));
+    midiBar.removeFromLeft(16);
     zoomLabel.setBounds(midiBar.removeFromLeft(48));
     zoomSlider.setBounds(midiBar.removeFromLeft(220).reduced(0, 4));
 
@@ -923,13 +929,13 @@ void MainComponent::updateTransportDisplay()
                               + juce::String(beat),
                           juce::dontSendNotification);
 
-    const auto peak = audioEngine.getLastOutputPeak();
-    const auto peakText = peak > 0.000001f
-        ? juce::String(juce::Decibels::gainToDecibels(peak), 1) + " dB"
+    const auto heldPeak = audioEngine.getHeldOutputPeak();
+    const auto peakText = heldPeak > 0.000001f
+        ? juce::String(juce::Decibels::gainToDecibels(heldPeak), 1) + " dB"
         : "-inf dB";
     peakLabel.setText("Peak " + peakText, juce::dontSendNotification);
     peakLabel.setColour(juce::Label::textColourId,
-                        peak >= 1.0f ? juce::Colours::red : juce::Colours::lightgrey);
+                        heldPeak >= 1.0f ? juce::Colours::red : juce::Colours::lightgrey);
 }
 
 void MainComponent::updateButtonStates()

@@ -302,6 +302,16 @@ float AudioEngine::getLastOutputPeak() const
     return lastOutputPeak.load();
 }
 
+float AudioEngine::getHeldOutputPeak() const
+{
+    return heldOutputPeak.load();
+}
+
+void AudioEngine::resetHeldOutputPeak()
+{
+    heldOutputPeak.store(0.0f);
+}
+
 void AudioEngine::setMetronomeEnabled(bool enabled)
 {
     metronome.setEnabled(enabled);
@@ -1494,6 +1504,11 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
         peak = juce::jmax(peak, renderBuffer.getMagnitude(channel, 0, numSamples));
 
     lastOutputPeak.store(peak);
+    auto heldPeak = heldOutputPeak.load();
+
+    while (peak > heldPeak && ! heldOutputPeak.compare_exchange_weak(heldPeak, peak))
+    {
+    }
 
     for (auto channel = 0; channel < numOutputChannels; ++channel)
     {

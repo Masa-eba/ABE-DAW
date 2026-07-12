@@ -55,6 +55,8 @@ public:
     void setGain(float gain);
     float getGain() const;
     float getLastOutputPeak() const;
+    float getHeldOutputPeak() const;
+    void resetHeldOutputPeak();
     void setMetronomeEnabled(bool enabled);
     bool isMetronomeEnabled() const;
     void setLoopEnabled(bool enabled);
@@ -176,6 +178,7 @@ private:
     std::atomic<TransportState> transportState { TransportState::Stopped };
     std::atomic<float> masterGain { 0.8f };
     std::atomic<float> lastOutputPeak { 0.0f };
+    std::atomic<float> heldOutputPeak { 0.0f };
     std::atomic<bool> loopEnabled { false };
     std::atomic<double> loopStartSeconds { 0.0 };
     std::atomic<double> loopEndSeconds { 0.0 };
