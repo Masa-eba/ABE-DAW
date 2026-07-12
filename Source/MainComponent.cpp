@@ -947,6 +947,12 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    if (key.getModifiers().isAltDown() && key.getKeyCode() == 'q')
+    {
+        alignSelectedClipToBar();
+        return true;
+    }
+
     if (key.getModifiers().isAltDown() && key.getKeyCode() == ']')
     {
         cycleSnapGrid(1);
@@ -1942,6 +1948,55 @@ void MainComponent::selectClipAtPlayhead()
         selectTrackById(selectedMidiClip->first);
 
     timelineComponent.repaint();
+}
+
+void MainComponent::alignSelectedClipToBar()
+{
+    const auto& tempo = audioEngine.getProjectModel().getTempoMap();
+    const auto beatsPerBar = static_cast<double>(juce::jmax(1, tempo.getNumerator()));
+
+    if (const auto selectedAudioClip = timelineComponent.getSelectedAudioClip())
+    {
+        if (const auto* track = audioEngine.getProjectModel().findAudioTrack(selectedAudioClip->first))
+        {
+            for (const auto& clip : track->clips)
+            {
+                if (clip.id != selectedAudioClip->second)
+                    continue;
+
+                const auto startBeat = tempo.secondsToBeats(clip.startTimeSeconds);
+                const auto alignedBeat = std::round(startBeat / beatsPerBar) * beatsPerBar;
+                audioEngine.setAudioClipStartTime(selectedAudioClip->first,
+                                                  selectedAudioClip->second,
+                                                  tempo.beatsToSeconds(alignedBeat));
+                updateTimelineSize();
+                timelineComponent.repaint();
+                return;
+            }
+        }
+    }
+
+    if (const auto selectedMidiClip = timelineComponent.getSelectedMidiClip())
+    {
+        if (const auto* track = audioEngine.getProjectModel().findMidiTrack(selectedMidiClip->first))
+        {
+            for (const auto& clip : track->clips)
+            {
+                if (clip.id != selectedMidiClip->second)
+                    continue;
+
+                const auto alignedBeat = std::round(clip.startBeat / beatsPerBar) * beatsPerBar;
+                audioEngine.setMidiClipStartBeat(selectedMidiClip->first,
+                                                 selectedMidiClip->second,
+                                                 alignedBeat);
+                updateTimelineSize();
+                timelineComponent.repaint();
+                return;
+            }
+        }
+    }
+
+    showErrorMessage("No clip selected", "Select an audio or MIDI clip before aligning it to a bar.");
 }
 
 void MainComponent::importAudioToSelectedTrack()
