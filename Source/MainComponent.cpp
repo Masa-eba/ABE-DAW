@@ -151,6 +151,10 @@ MainComponent::MainComponent()
     aiBassButton.onClick = [this] { generateAiBassForSelectedTrack(); };
     addAndMakeVisible(aiBassButton);
 
+    aiArpButton.setButtonText("AI Arp");
+    aiArpButton.onClick = [this] { generateAiArpForSelectedTrack(); };
+    addAndMakeVisible(aiArpButton);
+
     playPauseButton.setButtonText("Play");
     playPauseButton.onClick = [this]
     {
@@ -530,6 +534,8 @@ void MainComponent::resized()
     aiChordsButton.setBounds(clipBar.removeFromLeft(92).reduced(0, 5));
     clipBar.removeFromLeft(8);
     aiBassButton.setBounds(clipBar.removeFromLeft(78).reduced(0, 5));
+    clipBar.removeFromLeft(8);
+    aiArpButton.setBounds(clipBar.removeFromLeft(72).reduced(0, 5));
 
     area.removeFromTop(8);
     auto bottom = area.removeFromBottom(126);
@@ -2326,6 +2332,27 @@ void MainComponent::generateAiBassForSelectedTrack()
     if (! audioEngine.generateBassline(selected.id, "pop"))
     {
         showErrorMessage("AI Bass failed", "Could not generate a MIDI bassline.");
+        return;
+    }
+
+    timelineComponent.repaint();
+    updateTimelineSize();
+    updateTransportDisplay();
+}
+
+void MainComponent::generateAiArpForSelectedTrack()
+{
+    const auto selected = getSelectedTrack();
+
+    if (selected.type != TrackType::Midi)
+    {
+        showErrorMessage("Select MIDI track", "Select a MIDI track before generating an arpeggio.");
+        return;
+    }
+
+    if (! audioEngine.generateArpeggio(selected.id, "pop"))
+    {
+        showErrorMessage("AI Arp failed", "Could not generate a MIDI arpeggio.");
         return;
     }
 

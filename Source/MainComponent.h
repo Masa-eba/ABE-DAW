@@ -90,6 +90,7 @@ private:
     void staccatoSelectedMidiClip();
     void generateAiChordsForSelectedTrack();
     void generateAiBassForSelectedTrack();
+    void generateAiArpForSelectedTrack();
     void exportMix();
     void exportSelectedTrack();
     void saveProject();
@@ -139,6 +140,7 @@ private:
     juce::TextButton snapButton;
     juce::TextButton aiChordsButton;
     juce::TextButton aiBassButton;
+    juce::TextButton aiArpButton;
     juce::TextButton playPauseButton;
     juce::TextButton stopButton;
     juce::TextButton recordButton;
