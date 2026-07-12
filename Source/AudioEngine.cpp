@@ -297,6 +297,11 @@ float AudioEngine::getGain() const
     return masterGain.load();
 }
 
+float AudioEngine::getLastOutputPeak() const
+{
+    return lastOutputPeak.load();
+}
+
 void AudioEngine::setMetronomeEnabled(bool enabled)
 {
     metronome.setEnabled(enabled);
@@ -1483,6 +1488,12 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
     }
 
     renderBuffer.applyGain(masterGain.load());
+    auto peak = 0.0f;
+
+    for (auto channel = 0; channel < renderBuffer.getNumChannels(); ++channel)
+        peak = juce::jmax(peak, renderBuffer.getMagnitude(channel, 0, numSamples));
+
+    lastOutputPeak.store(peak);
 
     for (auto channel = 0; channel < numOutputChannels; ++channel)
     {

@@ -30,6 +30,10 @@ MainComponent::MainComponent()
     masterLabel.setColour(juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible(masterLabel);
 
+    peakLabel.setText("Peak -inf dB", juce::dontSendNotification);
+    peakLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
+    addAndMakeVisible(peakLabel);
+
     midiInputLabel.setText("MIDI Input", juce::dontSendNotification);
     midiInputLabel.setColour(juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible(midiInputLabel);
@@ -530,6 +534,8 @@ void MainComponent::resized()
     masterLabel.setBounds(midiBar.removeFromLeft(58));
     masterVolumeSlider.setBounds(midiBar.removeFromLeft(220).reduced(0, 4));
     midiBar.removeFromLeft(16);
+    peakLabel.setBounds(midiBar.removeFromLeft(110));
+    midiBar.removeFromLeft(16);
     zoomLabel.setBounds(midiBar.removeFromLeft(48));
     zoomSlider.setBounds(midiBar.removeFromLeft(220).reduced(0, 4));
 
@@ -916,6 +922,14 @@ void MainComponent::updateTransportDisplay()
                               + " Beat "
                               + juce::String(beat),
                           juce::dontSendNotification);
+
+    const auto peak = audioEngine.getLastOutputPeak();
+    const auto peakText = peak > 0.000001f
+        ? juce::String(juce::Decibels::gainToDecibels(peak), 1) + " dB"
+        : "-inf dB";
+    peakLabel.setText("Peak " + peakText, juce::dontSendNotification);
+    peakLabel.setColour(juce::Label::textColourId,
+                        peak >= 1.0f ? juce::Colours::red : juce::Colours::lightgrey);
 }
 
 void MainComponent::updateButtonStates()

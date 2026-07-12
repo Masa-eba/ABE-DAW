@@ -97,6 +97,7 @@ private:
     juce::Label positionLabel;
     juce::Label bpmLabel;
     juce::Label masterLabel;
+    juce::Label peakLabel;
     juce::Label midiInputLabel;
     juce::Label trackLabel;
     juce::Label zoomLabel;
