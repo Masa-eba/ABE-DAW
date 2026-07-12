@@ -70,6 +70,23 @@ MainComponent::MainComponent()
     renameTrackButton.onClick = [this] { renameSelectedTrack(); };
     addAndMakeVisible(renameTrackButton);
 
+    duplicateTrackButton.setButtonText("Dup Track");
+    duplicateTrackButton.onClick = [this]
+    {
+        const auto selected = getSelectedTrack();
+
+        if (audioEngine.duplicateTrack(selected.id).isNull())
+        {
+            showErrorMessage("Duplicate failed", "The selected track could not be duplicated.");
+            return;
+        }
+
+        refreshTrackSelector();
+        updateTimelineSize();
+        timelineComponent.repaint();
+    };
+    addAndMakeVisible(duplicateTrackButton);
+
     deleteTrackButton.setButtonText("Delete");
     deleteTrackButton.onClick = [this]
     {
@@ -421,6 +438,8 @@ void MainComponent::resized()
     importAudioButton.setBounds(trackBar.removeFromLeft(112).reduced(0, 5));
     trackBar.removeFromLeft(8);
     renameTrackButton.setBounds(trackBar.removeFromLeft(82).reduced(0, 5));
+    trackBar.removeFromLeft(8);
+    duplicateTrackButton.setBounds(trackBar.removeFromLeft(92).reduced(0, 5));
     trackBar.removeFromLeft(8);
     deleteTrackButton.setBounds(trackBar.removeFromLeft(80).reduced(0, 5));
     trackBar.removeFromLeft(8);

@@ -43,6 +43,13 @@ TrackId AudioEngine::addMidiTrack()
     return projectModel.addMidiTrack();
 }
 
+TrackId AudioEngine::duplicateTrack(const TrackId& trackId)
+{
+    std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
+    return projectModel.duplicateTrack(trackId);
+}
+
 bool AudioEngine::removeTrack(const TrackId& trackId)
 {
     std::scoped_lock lock(modelMutex);

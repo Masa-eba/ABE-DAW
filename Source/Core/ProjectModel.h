@@ -14,6 +14,7 @@ class ProjectModel final
 public:
     TrackId addAudioTrack();
     TrackId addMidiTrack();
+    TrackId duplicateTrack(const TrackId& trackId);
     bool removeTrack(const TrackId& trackId);
 
     AudioTrack* findAudioTrack(const TrackId& trackId);

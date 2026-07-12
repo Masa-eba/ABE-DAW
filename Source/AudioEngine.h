@@ -30,6 +30,7 @@ public:
 
     TrackId addAudioTrack();
     TrackId addMidiTrack();
+    TrackId duplicateTrack(const TrackId& trackId);
     bool removeTrack(const TrackId& trackId);
     bool loadFile(const juce::File& file);
     bool loadAudioFileToTrack(const TrackId& trackId, const juce::File& file);

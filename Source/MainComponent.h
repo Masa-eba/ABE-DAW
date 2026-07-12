@@ -85,6 +85,7 @@ private:
     juce::TextButton addAudioTrackButton;
     juce::TextButton addMidiTrackButton;
     juce::TextButton renameTrackButton;
+    juce::TextButton duplicateTrackButton;
     juce::TextButton deleteTrackButton;
     juce::TextButton importAudioButton;
     juce::TextButton duplicateClipButton;

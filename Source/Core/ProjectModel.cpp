@@ -16,6 +16,49 @@ TrackId ProjectModel::addMidiTrack()
     return id;
 }
 
+TrackId ProjectModel::duplicateTrack(const TrackId& trackId)
+{
+    if (const auto* source = findAudioTrack(trackId))
+    {
+        auto duplicate = std::make_unique<AudioTrack>(source->state.name + " Copy");
+        duplicate->state.gain = source->state.gain;
+        duplicate->state.pan = source->state.pan;
+        duplicate->state.muted = source->state.muted;
+        duplicate->state.solo = false;
+        duplicate->state.armed = false;
+        duplicate->clips = source->clips;
+        duplicate->audioBuffer = source->audioBuffer;
+        duplicate->sampleRate = source->sampleRate;
+
+        for (auto& clip : duplicate->clips)
+            clip.id = juce::Uuid();
+
+        const auto id = duplicate->state.id;
+        audioTracks.push_back(std::move(duplicate));
+        return id;
+    }
+
+    if (const auto* source = findMidiTrack(trackId))
+    {
+        auto duplicate = std::make_unique<MidiTrack>(source->state.name + " Copy");
+        duplicate->state.gain = source->state.gain;
+        duplicate->state.pan = source->state.pan;
+        duplicate->state.muted = source->state.muted;
+        duplicate->state.solo = false;
+        duplicate->state.armed = false;
+        duplicate->clips = source->clips;
+
+        for (auto& clip : duplicate->clips)
+            clip.id = juce::Uuid();
+
+        const auto id = duplicate->state.id;
+        midiTracks.push_back(std::move(duplicate));
+        return id;
+    }
+
+    return {};
+}
+
 bool ProjectModel::removeTrack(const TrackId& trackId)
 {
     const auto removeAudio = std::remove_if(audioTracks.begin(), audioTracks.end(),
