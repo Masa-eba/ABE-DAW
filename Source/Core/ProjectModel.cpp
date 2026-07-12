@@ -172,6 +172,11 @@ double ProjectModel::getProjectLengthSeconds() const
 
 juce::String ProjectModel::toJsonString() const
 {
+    return toJsonString({});
+}
+
+juce::String ProjectModel::toJsonString(const juce::File& projectDirectory) const
+{
     auto root = std::make_unique<juce::DynamicObject>();
     root->setProperty("version", 2);
     root->setProperty("bpm", tempoMap.getBpm());
@@ -192,8 +197,13 @@ juce::String ProjectModel::toJsonString() const
         for (const auto& clip : track->clips)
         {
             auto clipObject = std::make_unique<juce::DynamicObject>();
+            auto filePath = clip.sourceFile.getFullPathName();
+
+            if (projectDirectory != juce::File{} && clip.sourceFile.isAChildOf(projectDirectory))
+                filePath = clip.sourceFile.getRelativePathFrom(projectDirectory);
+
             clipObject->setProperty("id", clip.id.toString());
-            clipObject->setProperty("file", clip.sourceFile.getFullPathName());
+            clipObject->setProperty("file", filePath);
             clipObject->setProperty("startTimeSeconds", clip.startTimeSeconds);
             clipObject->setProperty("sourceOffsetSeconds", clip.sourceOffsetSeconds);
             clipObject->setProperty("lengthSeconds", clip.lengthSeconds);
@@ -263,6 +273,11 @@ juce::String ProjectModel::toJsonString() const
 
 bool ProjectModel::loadFromJsonString(const juce::String& json)
 {
+    return loadFromJsonString(json, {});
+}
+
+bool ProjectModel::loadFromJsonString(const juce::String& json, const juce::File& projectDirectory)
+{
     const auto parsed = juce::JSON::parse(json);
 
     if (! parsed.isObject())
@@ -292,8 +307,11 @@ bool ProjectModel::loadFromJsonString(const juce::String& json)
                             continue;
 
                         AudioClip clip;
+                        const auto filePath = clipItem.getProperty("file", "").toString();
                         clip.id = juce::Uuid(clipItem.getProperty("id", juce::Uuid().toString()).toString());
-                        clip.sourceFile = juce::File(clipItem.getProperty("file", "").toString());
+                        clip.sourceFile = juce::File::isAbsolutePath(filePath) || projectDirectory == juce::File{}
+                            ? juce::File(filePath)
+                            : projectDirectory.getChildFile(filePath);
                         clip.startTimeSeconds = static_cast<double>(clipItem.getProperty("startTimeSeconds", 0.0));
                         clip.sourceOffsetSeconds = static_cast<double>(clipItem.getProperty("sourceOffsetSeconds", 0.0));
                         clip.lengthSeconds = static_cast<double>(clipItem.getProperty("lengthSeconds", 0.0));
@@ -367,12 +385,12 @@ bool ProjectModel::loadFromJsonString(const juce::String& json)
 
 bool ProjectModel::saveToFile(const juce::File& file) const
 {
-    return file.replaceWithText(toJsonString());
+    return file.replaceWithText(toJsonString(file.getParentDirectory()));
 }
 
 bool ProjectModel::loadFromFile(const juce::File& file)
 {
-    return loadFromJsonString(file.loadFileAsString());
+    return loadFromJsonString(file.loadFileAsString(), file.getParentDirectory());
 }
 
 void ProjectModel::clearProject()

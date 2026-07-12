@@ -3,7 +3,30 @@
 #include <array>
 #include <algorithm>
 #include <cmath>
+#include <map>
 #include <memory>
+
+namespace
+{
+juce::File getAvailableCopyDestination(const juce::File& directory, const juce::File& sourceFile)
+{
+    const auto legalName = juce::File::createLegalFileName(sourceFile.getFileName());
+    const auto baseName = sourceFile.getFileNameWithoutExtension();
+    const auto extension = sourceFile.getFileExtension();
+    auto destination = directory.getChildFile(legalName);
+    auto suffix = 1;
+
+    while (destination.existsAsFile() && destination != sourceFile)
+    {
+        destination = directory.getChildFile(juce::File::createLegalFileName(baseName
+                                                                             + "_"
+                                                                             + juce::String(suffix++)
+                                                                             + extension));
+    }
+
+    return destination;
+}
+}
 
 AudioEngine::AudioEngine()
 {
@@ -800,10 +823,47 @@ void AudioEngine::setMidiKeyboardState(juce::MidiKeyboardState* state)
     keyboardState = state;
 }
 
-bool AudioEngine::saveProject(const juce::File& file) const
+bool AudioEngine::saveProject(const juce::File& file)
 {
     std::scoped_lock lock(modelMutex);
-    return projectModel.saveToFile(file);
+    const auto projectDirectory = file.getParentDirectory();
+    const auto audioDirectory = projectDirectory.getChildFile("Audio");
+
+    if (! projectDirectory.createDirectory() || ! audioDirectory.createDirectory())
+        return false;
+
+    std::map<juce::String, juce::File> copiedFiles;
+
+    for (auto& track : projectModel.getAudioTracks())
+    {
+        for (auto& clip : track->clips)
+        {
+            if (! clip.sourceFile.existsAsFile())
+                return false;
+
+            if (! clip.sourceFile.isAChildOf(audioDirectory))
+            {
+                const auto sourcePath = clip.sourceFile.getFullPathName();
+
+                if (const auto existing = copiedFiles.find(sourcePath); existing != copiedFiles.end())
+                {
+                    clip.sourceFile = existing->second;
+                    continue;
+                }
+
+                const auto destination = getAvailableCopyDestination(audioDirectory, clip.sourceFile);
+
+                if (destination != clip.sourceFile
+                    && ! clip.sourceFile.copyFileTo(destination))
+                    return false;
+
+                copiedFiles[sourcePath] = destination;
+                clip.sourceFile = destination;
+            }
+        }
+    }
+
+    return file.replaceWithText(projectModel.toJsonString(projectDirectory));
 }
 
 bool AudioEngine::loadProject(const juce::File& file)

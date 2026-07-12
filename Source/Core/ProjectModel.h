@@ -34,7 +34,9 @@ public:
 
     double getProjectLengthSeconds() const;
     juce::String toJsonString() const;
+    juce::String toJsonString(const juce::File& projectDirectory) const;
     bool loadFromJsonString(const juce::String& json);
+    bool loadFromJsonString(const juce::String& json, const juce::File& projectDirectory);
     bool saveToFile(const juce::File& file) const;
     bool loadFromFile(const juce::File& file);
     void clearProject();

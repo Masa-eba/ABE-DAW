@@ -93,7 +93,7 @@ public:
     bool generateChordProgression(const TrackId& trackId, const juce::String& style);
 
     void setMidiKeyboardState(juce::MidiKeyboardState* state);
-    bool saveProject(const juce::File& file) const;
+    bool saveProject(const juce::File& file);
     bool loadProject(const juce::File& file);
     bool exportToWav(const juce::File& destinationFile);
     bool undo();
