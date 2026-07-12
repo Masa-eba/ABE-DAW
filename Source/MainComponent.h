@@ -94,6 +94,7 @@ private:
     void clearSelectedAudioClipFades();
     void quantizeSelectedMidiClip();
     void swingQuantizeSelectedMidiClip();
+    void quantizeSelectedMidiClipToScale(bool minorScale);
     void transposeSelectedMidiClip(int semitones);
     void invertSelectedMidiClip();
     void layerSelectedMidiClipOctave(int semitones);

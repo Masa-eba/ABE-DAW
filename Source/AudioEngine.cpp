@@ -1335,6 +1335,93 @@ bool AudioEngine::invertMidiClip(const TrackId& trackId, const juce::Uuid& clipI
     return false;
 }
 
+bool AudioEngine::quantizeMidiClipToScale(const TrackId& trackId,
+                                          const juce::Uuid& clipId,
+                                          bool minorScale)
+{
+    std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
+
+    if (auto* track = projectModel.findMidiTrack(trackId))
+        for (auto& clip : track->clips)
+            if (clip.id == clipId)
+            {
+                auto rootPitchClass = -1;
+
+                for (auto i = 0; i < clip.sequence.getNumEvents(); ++i)
+                {
+                    const auto* event = clip.sequence.getEventPointer(i);
+
+                    if (event == nullptr || ! event->message.isNoteOn())
+                        continue;
+
+                    rootPitchClass = event->message.getNoteNumber() % 12;
+                    break;
+                }
+
+                if (rootPitchClass < 0)
+                    return false;
+
+                static constexpr std::array<int, 7> majorScale { 0, 2, 4, 5, 7, 9, 11 };
+                static constexpr std::array<int, 7> minorScaleIntervals { 0, 2, 3, 5, 7, 8, 10 };
+                const auto& scale = minorScale ? minorScaleIntervals : majorScale;
+
+                auto quantizeNote = [&scale, rootPitchClass](int note)
+                {
+                    auto bestNote = note;
+                    auto bestDistance = 128;
+
+                    for (auto octave = -1; octave <= 10; ++octave)
+                    {
+                        for (const auto interval : scale)
+                        {
+                            const auto candidate = (octave * 12) + rootPitchClass + interval;
+
+                            if (! juce::isPositiveAndBelow(candidate, 128))
+                                continue;
+
+                            const auto distance = std::abs(candidate - note);
+
+                            if (distance < bestDistance)
+                            {
+                                bestDistance = distance;
+                                bestNote = candidate;
+                            }
+                        }
+                    }
+
+                    return juce::jlimit(0, 127, bestNote);
+                };
+
+                auto changed = false;
+
+                for (auto i = 0; i < clip.sequence.getNumEvents(); ++i)
+                {
+                    auto* event = clip.sequence.getEventPointer(i);
+
+                    if (event == nullptr)
+                        continue;
+
+                    auto message = event->message;
+
+                    if (! message.isNoteOnOrOff())
+                        continue;
+
+                    const auto quantizedNote = quantizeNote(message.getNoteNumber());
+                    changed = changed || quantizedNote != message.getNoteNumber();
+                    message.setNoteNumber(quantizedNote);
+                    event->message = message;
+                }
+
+                if (changed)
+                    clip.sequence.updateMatchedPairs();
+
+                return true;
+            }
+
+    return false;
+}
+
 bool AudioEngine::addMidiClipOctaveLayer(const TrackId& trackId, const juce::Uuid& clipId, int semitones)
 {
     if (semitones == 0)

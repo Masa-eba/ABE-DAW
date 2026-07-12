@@ -681,6 +681,22 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isAltDown()
+        && key.getKeyCode() == 'g')
+    {
+        quantizeSelectedMidiClipToScale(true);
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isShiftDown()
+        && key.getKeyCode() == 'g')
+    {
+        quantizeSelectedMidiClipToScale(false);
+        return true;
+    }
+
     if (key.getModifiers().isCommandDown() && key.getKeyCode() == 'k')
     {
         quantizeSelectedMidiClip();
@@ -2513,6 +2529,25 @@ void MainComponent::swingQuantizeSelectedMidiClip()
 
     timelineComponent.repaint();
     updateTransportDisplay();
+}
+
+void MainComponent::quantizeSelectedMidiClipToScale(bool minorScale)
+{
+    const auto selectedMidiClip = timelineComponent.getSelectedMidiClip();
+
+    if (! selectedMidiClip.has_value())
+    {
+        showErrorMessage("No MIDI clip selected", "Select a MIDI clip before scale quantizing.");
+        return;
+    }
+
+    if (! audioEngine.quantizeMidiClipToScale(selectedMidiClip->first, selectedMidiClip->second, minorScale))
+    {
+        showErrorMessage("Scale failed", "The selected MIDI clip could not be moved to the requested scale.");
+        return;
+    }
+
+    timelineComponent.repaint();
 }
 
 void MainComponent::transposeSelectedMidiClip(int semitones)
