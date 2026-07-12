@@ -43,6 +43,7 @@ private:
     void redoProjectEdit();
     void loopSelectedClip();
     void importAudioToSelectedTrack();
+    void nudgeSelectedClip(int direction);
     void adjustSelectedAudioClipGain(float delta);
     void duplicateSelectedClip();
     void deleteSelectedClip();

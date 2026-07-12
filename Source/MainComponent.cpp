@@ -492,6 +492,18 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
         return true;
     }
 
+    if (key.getModifiers().isCommandDown() && key.getKeyCode() == juce::KeyPress::leftKey)
+    {
+        nudgeSelectedClip(-1);
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown() && key.getKeyCode() == juce::KeyPress::rightKey)
+    {
+        nudgeSelectedClip(1);
+        return true;
+    }
+
     if (key.getModifiers().isCommandDown() && key.getKeyCode() == ']')
     {
         adjustSelectedMidiClipVelocity(0.1f);
@@ -742,6 +754,52 @@ void MainComponent::loopSelectedClip()
     }
 
     showErrorMessage("No clip selected", "Select an audio or MIDI clip before setting a clip loop.");
+}
+
+void MainComponent::nudgeSelectedClip(int direction)
+{
+    if (direction == 0)
+        return;
+
+    const auto& tempo = audioEngine.getProjectModel().getTempoMap();
+    const auto stepBeats = 0.25;
+    const auto stepSeconds = tempo.beatsToSeconds(stepBeats);
+
+    if (const auto selectedAudioClip = timelineComponent.getSelectedAudioClip())
+    {
+        if (const auto* track = audioEngine.getProjectModel().findAudioTrack(selectedAudioClip->first))
+            for (const auto& clip : track->clips)
+                if (clip.id == selectedAudioClip->second)
+                {
+                    audioEngine.setAudioClipStartTime(selectedAudioClip->first,
+                                                      selectedAudioClip->second,
+                                                      juce::jmax(0.0, clip.startTimeSeconds
+                                                                  + static_cast<double>(direction) * stepSeconds));
+                    updateTimelineSize();
+                    updateTransportDisplay();
+                    timelineComponent.repaint();
+                    return;
+                }
+    }
+
+    if (const auto selectedMidiClip = timelineComponent.getSelectedMidiClip())
+    {
+        if (const auto* track = audioEngine.getProjectModel().findMidiTrack(selectedMidiClip->first))
+            for (const auto& clip : track->clips)
+                if (clip.id == selectedMidiClip->second)
+                {
+                    audioEngine.setMidiClipStartBeat(selectedMidiClip->first,
+                                                     selectedMidiClip->second,
+                                                     juce::jmax(0.0, clip.startBeat
+                                                                 + static_cast<double>(direction) * stepBeats));
+                    updateTimelineSize();
+                    updateTransportDisplay();
+                    timelineComponent.repaint();
+                    return;
+                }
+    }
+
+    showErrorMessage("No clip selected", "Select an audio or MIDI clip before nudging.");
 }
 
 void MainComponent::importAudioToSelectedTrack()
