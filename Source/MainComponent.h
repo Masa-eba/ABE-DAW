@@ -41,6 +41,9 @@ private:
     void importAudioToSelectedTrack();
     void duplicateSelectedClip();
     void deleteSelectedClip();
+    void splitSelectedClip();
+    void fadeInSelectedClip();
+    void fadeOutSelectedClip();
     void generateAiChordsForSelectedTrack();
     void exportMix();
     void saveProject();
@@ -74,6 +77,9 @@ private:
     juce::TextButton importAudioButton;
     juce::TextButton duplicateClipButton;
     juce::TextButton deleteClipButton;
+    juce::TextButton splitClipButton;
+    juce::TextButton fadeInButton;
+    juce::TextButton fadeOutButton;
     juce::TextButton snapButton;
     juce::TextButton aiChordsButton;
     juce::TextButton playPauseButton;

@@ -109,6 +109,35 @@ void TimelineComponent::paint(juce::Graphics& graphics)
                                                   36.0f,
                                                   4.0f);
 
+                    if (clip.fadeInSeconds > 0.0)
+                    {
+                        juce::Path fadePath;
+                        const auto fadeWidth = juce::jlimit(4.0f,
+                                                            static_cast<float>(juce::jmax(20, width)),
+                                                            static_cast<float>(clip.fadeInSeconds * pixelsPerSecond));
+                        fadePath.startNewSubPath(x, static_cast<float>(y + 50));
+                        fadePath.lineTo(x + fadeWidth, static_cast<float>(y + 14));
+                        fadePath.lineTo(x, static_cast<float>(y + 14));
+                        fadePath.closeSubPath();
+                        graphics.setColour(juce::Colour(0x6648d597));
+                        graphics.fillPath(fadePath);
+                    }
+
+                    if (clip.fadeOutSeconds > 0.0)
+                    {
+                        juce::Path fadePath;
+                        const auto clipWidth = static_cast<float>(juce::jmax(20, width));
+                        const auto fadeWidth = juce::jlimit(4.0f,
+                                                            clipWidth,
+                                                            static_cast<float>(clip.fadeOutSeconds * pixelsPerSecond));
+                        fadePath.startNewSubPath(x + clipWidth - fadeWidth, static_cast<float>(y + 14));
+                        fadePath.lineTo(x + clipWidth, static_cast<float>(y + 50));
+                        fadePath.lineTo(x + clipWidth, static_cast<float>(y + 14));
+                        fadePath.closeSubPath();
+                        graphics.setColour(juce::Colour(0x6648d597));
+                        graphics.fillPath(fadePath);
+                    }
+
                     if (isSelected)
                     {
                         graphics.setColour(juce::Colour(0xffffc857));

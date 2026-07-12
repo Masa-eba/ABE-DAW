@@ -405,6 +405,70 @@ bool AudioEngine::deleteAudioClip(const TrackId& trackId, const juce::Uuid& clip
     return false;
 }
 
+bool AudioEngine::splitAudioClipAtPosition(const TrackId& trackId,
+                                           const juce::Uuid& clipId,
+                                           double positionSeconds)
+{
+    if (! std::isfinite(positionSeconds))
+        return false;
+
+    std::scoped_lock lock(modelMutex);
+
+    if (auto* track = projectModel.findAudioTrack(trackId))
+    {
+        for (auto& clip : track->clips)
+        {
+            if (clip.id != clipId)
+                continue;
+
+            const auto localSplit = positionSeconds - clip.startTimeSeconds;
+
+            if (localSplit <= 0.05 || localSplit >= clip.lengthSeconds - 0.05)
+                return false;
+
+            auto rightClip = clip;
+            rightClip.id = juce::Uuid();
+            rightClip.startTimeSeconds = positionSeconds;
+            rightClip.sourceOffsetSeconds += localSplit;
+            rightClip.lengthSeconds -= localSplit;
+            rightClip.fadeInSeconds = 0.0;
+
+            clip.lengthSeconds = localSplit;
+            clip.fadeOutSeconds = 0.0;
+            track->clips.push_back(rightClip);
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool AudioEngine::setAudioClipFade(const TrackId& trackId,
+                                   const juce::Uuid& clipId,
+                                   double fadeInSeconds,
+                                   double fadeOutSeconds)
+{
+    if (! std::isfinite(fadeInSeconds) || fadeInSeconds < 0.0)
+        fadeInSeconds = 0.0;
+
+    if (! std::isfinite(fadeOutSeconds) || fadeOutSeconds < 0.0)
+        fadeOutSeconds = 0.0;
+
+    std::scoped_lock lock(modelMutex);
+
+    if (auto* track = projectModel.findAudioTrack(trackId))
+        for (auto& clip : track->clips)
+            if (clip.id == clipId)
+            {
+                const auto maxFade = clip.lengthSeconds * 0.5;
+                clip.fadeInSeconds = juce::jlimit(0.0, maxFade, fadeInSeconds);
+                clip.fadeOutSeconds = juce::jlimit(0.0, maxFade, fadeOutSeconds);
+                return true;
+            }
+
+    return false;
+}
+
 bool AudioEngine::generateChordProgression(const TrackId& trackId, const juce::String& style)
 {
     std::scoped_lock lock(modelMutex);
@@ -696,13 +760,23 @@ void AudioEngine::renderAudioTracks(juce::AudioBuffer<float>& buffer,
                 if (sourceIndex < 0 || sourceIndex >= track.audioBuffer.getNumSamples())
                     continue;
 
+                auto clipGain = track.state.gain;
+
+                if (clip.fadeInSeconds > 0.0 && sourceTime < clip.fadeInSeconds)
+                    clipGain *= static_cast<float>(sourceTime / clip.fadeInSeconds);
+
+                if (clip.fadeOutSeconds > 0.0 && sourceTime > clip.lengthSeconds - clip.fadeOutSeconds)
+                    clipGain *= static_cast<float>((clip.lengthSeconds - sourceTime) / clip.fadeOutSeconds);
+
+                clipGain = juce::jlimit(0.0f, 1.0f, clipGain);
+
                 for (auto channel = 0; channel < buffer.getNumChannels(); ++channel)
                 {
                     const auto sourceChannel = juce::jmin(channel, track.audioBuffer.getNumChannels() - 1);
                     buffer.addSample(channel,
                                      sample,
                                      track.audioBuffer.getSample(sourceChannel, sourceIndex)
-                                         * track.state.gain);
+                                         * clipGain);
                 }
             }
         }

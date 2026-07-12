@@ -153,6 +153,8 @@ bool ProjectModel::saveToFile(const juce::File& file) const
             clipObject->setProperty("startTimeSeconds", clip.startTimeSeconds);
             clipObject->setProperty("sourceOffsetSeconds", clip.sourceOffsetSeconds);
             clipObject->setProperty("lengthSeconds", clip.lengthSeconds);
+            clipObject->setProperty("fadeInSeconds", clip.fadeInSeconds);
+            clipObject->setProperty("fadeOutSeconds", clip.fadeOutSeconds);
             clips.add(juce::var(clipObject.release()));
         }
         object->setProperty("clips", clips);
@@ -248,6 +250,8 @@ bool ProjectModel::loadFromFile(const juce::File& file)
                         clip.startTimeSeconds = static_cast<double>(clipItem.getProperty("startTimeSeconds", 0.0));
                         clip.sourceOffsetSeconds = static_cast<double>(clipItem.getProperty("sourceOffsetSeconds", 0.0));
                         clip.lengthSeconds = static_cast<double>(clipItem.getProperty("lengthSeconds", 0.0));
+                        clip.fadeInSeconds = static_cast<double>(clipItem.getProperty("fadeInSeconds", 0.0));
+                        clip.fadeOutSeconds = static_cast<double>(clipItem.getProperty("fadeOutSeconds", 0.0));
                         track->clips.push_back(clip);
                     }
                 }

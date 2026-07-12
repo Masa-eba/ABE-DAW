@@ -83,6 +83,18 @@ MainComponent::MainComponent()
     deleteClipButton.onClick = [this] { deleteSelectedClip(); };
     addAndMakeVisible(deleteClipButton);
 
+    splitClipButton.setButtonText("Split");
+    splitClipButton.onClick = [this] { splitSelectedClip(); };
+    addAndMakeVisible(splitClipButton);
+
+    fadeInButton.setButtonText("Fade In");
+    fadeInButton.onClick = [this] { fadeInSelectedClip(); };
+    addAndMakeVisible(fadeInButton);
+
+    fadeOutButton.setButtonText("Fade Out");
+    fadeOutButton.onClick = [this] { fadeOutSelectedClip(); };
+    addAndMakeVisible(fadeOutButton);
+
     snapButton.setButtonText("Snap");
     snapButton.setClickingTogglesState(true);
     snapButton.setToggleState(true, juce::dontSendNotification);
@@ -348,6 +360,12 @@ void MainComponent::resized()
     trackBar.removeFromLeft(8);
     deleteClipButton.setBounds(trackBar.removeFromLeft(92).reduced(0, 5));
     trackBar.removeFromLeft(8);
+    splitClipButton.setBounds(trackBar.removeFromLeft(64).reduced(0, 5));
+    trackBar.removeFromLeft(8);
+    fadeInButton.setBounds(trackBar.removeFromLeft(76).reduced(0, 5));
+    trackBar.removeFromLeft(8);
+    fadeOutButton.setBounds(trackBar.removeFromLeft(84).reduced(0, 5));
+    trackBar.removeFromLeft(8);
     snapButton.setBounds(trackBar.removeFromLeft(62).reduced(0, 5));
     trackBar.removeFromLeft(8);
     aiChordsButton.setBounds(trackBar.removeFromLeft(92).reduced(0, 5));
@@ -595,6 +613,72 @@ void MainComponent::deleteSelectedClip()
 
     timelineComponent.repaint();
     updateTransportDisplay();
+}
+
+void MainComponent::splitSelectedClip()
+{
+    const auto selectedClip = timelineComponent.getSelectedAudioClip();
+
+    if (! selectedClip.has_value())
+    {
+        showErrorMessage("No clip selected", "Select an audio clip before splitting.");
+        return;
+    }
+
+    if (! audioEngine.splitAudioClipAtPosition(selectedClip->first, selectedClip->second, audioEngine.getPosition()))
+    {
+        showErrorMessage("Split failed", "Move the playhead inside the selected clip before splitting.");
+        return;
+    }
+
+    timelineComponent.repaint();
+    updateTransportDisplay();
+}
+
+void MainComponent::fadeInSelectedClip()
+{
+    const auto selectedClip = timelineComponent.getSelectedAudioClip();
+
+    if (! selectedClip.has_value())
+    {
+        showErrorMessage("No clip selected", "Select an audio clip before applying a fade.");
+        return;
+    }
+
+    auto fadeOutSeconds = 0.0;
+
+    if (const auto* track = audioEngine.getProjectModel().findAudioTrack(selectedClip->first))
+        for (const auto& clip : track->clips)
+            if (clip.id == selectedClip->second)
+                fadeOutSeconds = clip.fadeOutSeconds;
+
+    if (! audioEngine.setAudioClipFade(selectedClip->first, selectedClip->second, 1.0, fadeOutSeconds))
+        showErrorMessage("Fade failed", "The selected audio clip could not be faded.");
+
+    timelineComponent.repaint();
+}
+
+void MainComponent::fadeOutSelectedClip()
+{
+    const auto selectedClip = timelineComponent.getSelectedAudioClip();
+
+    if (! selectedClip.has_value())
+    {
+        showErrorMessage("No clip selected", "Select an audio clip before applying a fade.");
+        return;
+    }
+
+    auto fadeInSeconds = 0.0;
+
+    if (const auto* track = audioEngine.getProjectModel().findAudioTrack(selectedClip->first))
+        for (const auto& clip : track->clips)
+            if (clip.id == selectedClip->second)
+                fadeInSeconds = clip.fadeInSeconds;
+
+    if (! audioEngine.setAudioClipFade(selectedClip->first, selectedClip->second, fadeInSeconds, 1.0))
+        showErrorMessage("Fade failed", "The selected audio clip could not be faded.");
+
+    timelineComponent.repaint();
 }
 
 void MainComponent::generateAiChordsForSelectedTrack()

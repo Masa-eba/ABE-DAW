@@ -68,6 +68,11 @@ public:
                               double startTimeSeconds);
     bool duplicateAudioClip(const TrackId& trackId, const juce::Uuid& clipId);
     bool deleteAudioClip(const TrackId& trackId, const juce::Uuid& clipId);
+    bool splitAudioClipAtPosition(const TrackId& trackId, const juce::Uuid& clipId, double positionSeconds);
+    bool setAudioClipFade(const TrackId& trackId,
+                          const juce::Uuid& clipId,
+                          double fadeInSeconds,
+                          double fadeOutSeconds);
     bool generateChordProgression(const TrackId& trackId, const juce::String& style);
 
     void setMidiKeyboardState(juce::MidiKeyboardState* state);
