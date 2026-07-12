@@ -1663,23 +1663,37 @@ void MainComponent::deleteSelectedClip()
 
 void MainComponent::splitSelectedClip()
 {
-    const auto selectedClip = timelineComponent.getSelectedAudioClip();
-
-    if (! selectedClip.has_value())
+    if (const auto selectedClip = timelineComponent.getSelectedAudioClip())
     {
-        showErrorMessage("No clip selected", "Select an audio clip before splitting.");
+        if (! audioEngine.splitAudioClipAtPosition(selectedClip->first, selectedClip->second, audioEngine.getPosition()))
+        {
+            showErrorMessage("Split failed", "Move the playhead inside the selected clip before splitting.");
+            return;
+        }
+
+        timelineComponent.repaint();
+        updateTimelineSize();
+        updateTransportDisplay();
         return;
     }
 
-    if (! audioEngine.splitAudioClipAtPosition(selectedClip->first, selectedClip->second, audioEngine.getPosition()))
+    if (const auto selectedMidiClip = timelineComponent.getSelectedMidiClip())
     {
-        showErrorMessage("Split failed", "Move the playhead inside the selected clip before splitting.");
+        const auto splitBeat = audioEngine.getProjectModel().getTempoMap().secondsToBeats(audioEngine.getPosition());
+
+        if (! audioEngine.splitMidiClipAtBeat(selectedMidiClip->first, selectedMidiClip->second, splitBeat))
+        {
+            showErrorMessage("Split failed", "Move the playhead inside the selected clip before splitting.");
+            return;
+        }
+
+        timelineComponent.repaint();
+        updateTimelineSize();
+        updateTransportDisplay();
         return;
     }
 
-    timelineComponent.repaint();
-    updateTimelineSize();
-    updateTransportDisplay();
+    showErrorMessage("No clip selected", "Select an audio or MIDI clip before splitting.");
 }
 
 void MainComponent::fadeInSelectedClip()

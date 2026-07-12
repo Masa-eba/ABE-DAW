@@ -1001,6 +1001,108 @@ bool AudioEngine::deleteMidiClip(const TrackId& trackId, const juce::Uuid& clipI
     return false;
 }
 
+bool AudioEngine::splitMidiClipAtBeat(const TrackId& trackId,
+                                      const juce::Uuid& clipId,
+                                      double splitBeat)
+{
+    if (! std::isfinite(splitBeat))
+        return false;
+
+    std::scoped_lock lock(modelMutex);
+    saveUndoSnapshotNoLock();
+
+    if (auto* track = projectModel.findMidiTrack(trackId))
+    {
+        for (auto& clip : track->clips)
+        {
+            if (clip.id != clipId)
+                continue;
+
+            const auto localSplit = splitBeat - clip.startBeat;
+
+            if (localSplit <= 0.05 || localSplit >= clip.lengthBeats - 0.05)
+                return false;
+
+            clip.sequence.updateMatchedPairs();
+
+            MidiClip rightClip;
+            rightClip.startBeat = splitBeat;
+            rightClip.lengthBeats = clip.lengthBeats - localSplit;
+            rightClip.muted = clip.muted;
+
+            juce::MidiMessageSequence leftSequence;
+            juce::MidiMessageSequence rightSequence;
+
+            const auto addMessage = [](juce::MidiMessageSequence& sequence,
+                                       juce::MidiMessage message,
+                                       double beat)
+            {
+                message.setTimeStamp(juce::jmax(0.0, beat));
+                sequence.addEvent(message);
+            };
+
+            for (auto i = 0; i < clip.sequence.getNumEvents(); ++i)
+            {
+                const auto* event = clip.sequence.getEventPointer(i);
+
+                if (event == nullptr)
+                    continue;
+
+                const auto message = event->message;
+                const auto eventBeat = message.getTimeStamp();
+
+                if (message.isNoteOn())
+                {
+                    const auto noteEndBeat = event->noteOffObject != nullptr
+                        ? event->noteOffObject->message.getTimeStamp()
+                        : clip.lengthBeats;
+
+                    if (eventBeat < localSplit)
+                    {
+                        auto noteOn = message;
+                        auto noteOff = juce::MidiMessage::noteOff(message.getChannel(),
+                                                                  message.getNoteNumber(),
+                                                                  static_cast<juce::uint8>(0));
+                        addMessage(leftSequence, noteOn, eventBeat);
+                        addMessage(leftSequence, noteOff, juce::jmin(noteEndBeat, localSplit));
+                    }
+
+                    if (noteEndBeat > localSplit)
+                    {
+                        auto noteOn = message;
+                        auto noteOff = juce::MidiMessage::noteOff(message.getChannel(),
+                                                                  message.getNoteNumber(),
+                                                                  static_cast<juce::uint8>(0));
+                        addMessage(rightSequence, noteOn, juce::jmax(eventBeat, localSplit) - localSplit);
+                        addMessage(rightSequence, noteOff, noteEndBeat - localSplit);
+                    }
+                }
+                else if (! message.isNoteOff())
+                {
+                    if (eventBeat < localSplit)
+                        addMessage(leftSequence, message, eventBeat);
+                    else if (eventBeat < clip.lengthBeats)
+                        addMessage(rightSequence, message, eventBeat - localSplit);
+                }
+            }
+
+            clip.lengthBeats = localSplit;
+            clip.sequence = leftSequence;
+            clip.sequence.sort();
+            clip.sequence.updateMatchedPairs();
+
+            rightClip.sequence = rightSequence;
+            rightClip.sequence.sort();
+            rightClip.sequence.updateMatchedPairs();
+
+            track->clips.push_back(rightClip);
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool AudioEngine::quantizeMidiClip(const TrackId& trackId, const juce::Uuid& clipId, double gridBeats)
 {
     if (! std::isfinite(gridBeats) || gridBeats <= 0.0)
