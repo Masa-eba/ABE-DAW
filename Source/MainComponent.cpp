@@ -435,6 +435,25 @@ void MainComponent::resized()
 
 bool MainComponent::keyPressed(const juce::KeyPress& key)
 {
+    if (key.getModifiers().isCommandDown() && key.getKeyCode() == 'd')
+    {
+        duplicateSelectedClip();
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown() && key.getKeyCode() == 'e')
+    {
+        splitSelectedClip();
+        return true;
+    }
+
+    if (key.getKeyCode() == juce::KeyPress::deleteKey
+        || key.getKeyCode() == juce::KeyPress::backspaceKey)
+    {
+        deleteSelectedClip();
+        return true;
+    }
+
     if (const auto note = getComputerKeyboardNoteForKey(key.getKeyCode()))
     {
         if (! activeComputerKeyboardNotes.contains(*note))

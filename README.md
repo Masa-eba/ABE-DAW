@@ -112,6 +112,13 @@ open build/MiniDAW_artefacts/AI-DAW.app
 16. `Loop`でプロジェクト長の範囲を繰り返し再生
 17. `Export Mix`でミックス結果を書き出す
 
+## ショートカット
+
+- `Space`: 再生 / 一時停止
+- `Command + D`: 選択中AudioClip / MidiClipを複製
+- `Command + E`: 選択中AudioClipを再生位置でSplit
+- `Delete` / `Backspace`: 選択中AudioClip / MidiClipを削除
+
 ## ディレクトリ構成
 
 ```text
