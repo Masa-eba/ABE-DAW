@@ -707,6 +707,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
     }
 
     if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isAltDown()
+        && key.getKeyCode() == 'p')
+    {
+        duplicateSelectedClipAfterItself();
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown()
         && key.getModifiers().isShiftDown()
         && key.getKeyCode() == 'g')
     {
@@ -2498,6 +2506,61 @@ void MainComponent::duplicateSelectedClipAtNextBar()
     }
 
     showErrorMessage("No clip selected", "Select an audio or MIDI clip before duplicating it at the next bar.");
+}
+
+void MainComponent::duplicateSelectedClipAfterItself()
+{
+    if (const auto selectedClip = timelineComponent.getSelectedAudioClip())
+    {
+        if (const auto* track = audioEngine.getProjectModel().findAudioTrack(selectedClip->first))
+        {
+            for (const auto& clip : track->clips)
+            {
+                if (clip.id != selectedClip->second)
+                    continue;
+
+                if (! audioEngine.duplicateAudioClipAtTime(selectedClip->first,
+                                                           selectedClip->second,
+                                                           clip.startTimeSeconds + clip.lengthSeconds))
+                {
+                    showErrorMessage("Duplicate failed", "The selected audio clip could not be duplicated after itself.");
+                    return;
+                }
+
+                updateTimelineSize();
+                updateTransportDisplay();
+                timelineComponent.repaint();
+                return;
+            }
+        }
+    }
+
+    if (const auto selectedMidiClip = timelineComponent.getSelectedMidiClip())
+    {
+        if (const auto* track = audioEngine.getProjectModel().findMidiTrack(selectedMidiClip->first))
+        {
+            for (const auto& clip : track->clips)
+            {
+                if (clip.id != selectedMidiClip->second)
+                    continue;
+
+                if (! audioEngine.duplicateMidiClipAtBeat(selectedMidiClip->first,
+                                                          selectedMidiClip->second,
+                                                          clip.startBeat + clip.lengthBeats))
+                {
+                    showErrorMessage("Duplicate failed", "The selected MIDI clip could not be duplicated after itself.");
+                    return;
+                }
+
+                updateTimelineSize();
+                updateTransportDisplay();
+                timelineComponent.repaint();
+                return;
+            }
+        }
+    }
+
+    showErrorMessage("No clip selected", "Select an audio or MIDI clip before duplicating it after itself.");
 }
 
 void MainComponent::toggleSelectedClipMute()

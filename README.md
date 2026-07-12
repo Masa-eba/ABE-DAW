@@ -234,6 +234,7 @@ open build/MiniDAW_artefacts/AI-DAW.app
 - `Command + D`: 選択中AudioClip / MidiClipを複製
 - `Command + Shift + D`: 選択中AudioClip / MidiClipを再生位置へ複製
 - `Command + Option + Shift + D`: 選択中AudioClip / MidiClipを次の小節頭へ複製
+- `Command + Option + P`: 選択中AudioClip / MidiClipを直後へ連結複製
 - `Command + Shift + M`: 選択中AudioClip / MidiClipのMute切替
 - `Command + E`: 選択中AudioClip / MidiClipを再生位置でSplit
 - `Command + Option + F`: 選択中AudioClipのFade In / Outをクリア

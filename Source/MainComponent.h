@@ -90,6 +90,7 @@ private:
     void duplicateSelectedClip();
     void duplicateSelectedClipAtPlayhead();
     void duplicateSelectedClipAtNextBar();
+    void duplicateSelectedClipAfterItself();
     void toggleSelectedClipMute();
     void deleteSelectedClip();
     void splitSelectedClip();
