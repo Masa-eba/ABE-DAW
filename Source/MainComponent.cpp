@@ -593,6 +593,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key)
 
     if (key.getModifiers().isCommandDown()
         && key.getModifiers().isShiftDown()
+        && key.getKeyCode() == 'u')
+    {
+        clearAllTrackMuteSolo();
+        return true;
+    }
+
+    if (key.getModifiers().isCommandDown()
+        && key.getModifiers().isShiftDown()
         && key.getKeyCode() == 'm')
     {
         toggleSelectedClipMute();
@@ -1217,6 +1225,13 @@ void MainComponent::renameSelectedTrack()
                                 component->timelineComponent.repaint();
                             }),
                             false);
+}
+
+void MainComponent::clearAllTrackMuteSolo()
+{
+    audioEngine.clearTrackMuteSolo();
+    updateSelectedTrackControls();
+    timelineComponent.repaint();
 }
 
 void MainComponent::loopSelectedClip()
